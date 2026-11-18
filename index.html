@@ -329,6 +329,10 @@
             <span class="material-icons" style="font-size:18px">print</span>
             طباعة التصريح
           </button>
+          <button class="btn btn-primary" onclick="downloadDeclarationPDF()" style="background:var(--gn-gold);color:var(--gn-black)">
+            <span class="material-icons" style="font-size:18px">picture_as_pdf</span>
+            تحميل PDF
+          </button>
           <button class="btn btn-secondary" onclick="newDeclaration()">
             <span class="material-icons" style="font-size:18px">add</span>
             تصريح جديد
@@ -398,7 +402,7 @@
       <p style="margin-top:8px">طُبع بتاريخ: <span id="print-print-date"></span></p>
     </div>
     <div class="sig">
-      <p>ختم ووزارة الدرك</p>
+      <p>الدرك الدرك</p>
       <p>Cachet de la GN</p>
       <div class="sig-box"></div>
     </div>
@@ -407,11 +411,11 @@
 
 <footer class="no-print">
   <p>© <span id="year">2026</span> قيادة الدرك الوطني الجزائري &mdash; جميع الحقوق محفوظة</p>
-  <p style="margin-top:4px">E-declaration GN &mdash; خدمة إلكترونية لتسهيل التصريح بضياع الوثائق</p>
+  <p style="margin-top:4px">E-declaration GN &mdash; خدمة إلكترونية لتسهيل التصريح بالوثائق</p>
 </footer>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, setDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDUFbdUFtx-92jsIcH9umI-PaAVmQdLksY",
@@ -427,6 +431,8 @@
   const db = getFirestore(app);
   window._db = db;
   window._addDoc = addDoc;
+  window._setDoc = setDoc;
+  window._doc = doc;
   window._collection = collection;
   window._serverTimestamp = serverTimestamp;
   console.log("Firebase initialized");
