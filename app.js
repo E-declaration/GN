@@ -513,17 +513,13 @@ window.retrySubmit = retrySubmit;
 
 function downloadDeclarationPDF() {
   if(!submittedData) return;
-  const ref = submittedData.reference || '';
-  const prevTitle = document.title;
-  document.title = ref;
-  window.print();
-  // Restore title after print dialog
-  setTimeout(() => { document.title = prevTitle; }, 2000);
+  // Fill print area first (same as printDeclaration)
+  printDeclaration(true);
 }
 window.downloadDeclarationPDF = downloadDeclarationPDF;
 
 // ===== PRINT =====
-function printDeclaration() {
+function printDeclaration(isPdf) {
   if(!submittedData) return;
   const d = submittedData;
   document.getElementById('print-ref-num').textContent = d.reference;
@@ -578,9 +574,24 @@ function printDeclaration() {
   if(ptLoss) ptLoss.textContent = DL.printLoss;
 
   document.getElementById('print-circumstances').textContent = d.loss.circumstances;
-  document.getElementById('print-area').style.display='block';
-  window.print();
-  setTimeout(()=>{ document.getElementById('print-area').style.display='none'; },1000);
+
+  const printArea = document.getElementById('print-area');
+  const prevTitle = document.title;
+  if(isPdf) {
+    document.title = submittedData.reference || 'تصريح-GN';
+  }
+  // Show print area, let browser render it, then print
+  printArea.style.display = 'block';
+  // Use requestAnimationFrame to ensure the DOM is painted before print
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      window.print();
+      setTimeout(() => {
+        printArea.style.display = 'none';
+        document.title = prevTitle;
+      }, 1500);
+    });
+  });
 }
 window.printDeclaration=printDeclaration;
 
