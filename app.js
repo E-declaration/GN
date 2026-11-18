@@ -471,10 +471,18 @@ function printDeclaration() {
     <div class="print-field"><div class="pf-label">تاريخ الضياع</div><div class="pf-val">${d.loss.date}</div></div>
     <div class="print-field"><div class="pf-label">مكان الضياع</div><div class="pf-val">${lossWilaya?lossWilaya.name:d.loss.wilaya} &mdash; ${d.loss.commune}</div></div>
   `;
-  // Update print title with declaration type
+  // Update print titles based on declaration type
+  const declType = d.declarationType || 'loss';
   const declLabel = d.declarationTypeLabel || 'تصريح بالضياع';
   const printTitle = document.querySelector('.print-title');
   if(printTitle) printTitle.textContent = declLabel;
+  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
+  const ptMain = document.getElementById('print-title-main');
+  if(ptMain) ptMain.textContent = DL.printTitle;
+  const ptDocs = document.getElementById('print-docs-label');
+  if(ptDocs) ptDocs.textContent = DL.printDocs;
+  const ptLoss = document.getElementById('print-loss-label');
+  if(ptLoss) ptLoss.textContent = DL.printLoss;
 
   document.getElementById('print-circumstances').textContent = d.loss.circumstances;
   document.getElementById('print-area').style.display='block';
@@ -489,6 +497,117 @@ function getUserTypeLabel(t) {
 
 function newDeclaration() { location.reload(); }
 window.newDeclaration=newDeclaration;
+
+// ===== DECLARATION TYPE CHANGE =====
+const DECL_LABELS = {
+  loss: {
+    banner:       'التصريح الإلكتروني بضياع الوثائق',
+    formTitle:    'استمارة التصريح بسبب الضياع',
+    stepDocs:     'الوثيقة / الوثائق الضائعة',
+    stepLoss:     'ظروف الضياع',
+    sectionLoss:  'ظروف الضياع',
+    labelDate:    'تاريخ الضياع المقدّر',
+    labelWilaya:  'ولاية مكان الضياع',
+    labelCommune: 'بلدية مكان الضياع',
+    labelCirc:    'وصف ظروف الضياع',
+    oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق الضائعة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
+    reporterNature: 'صاحب الوثائق الضائعة',
+    printTitle:   'محضر التصريح بضياع الوثائق',
+    printDocs:    'الوثيقة / الوثائق الضائعة — Documents perdus',
+    printLoss:    'ظروف الضياع — Circonstances de la perte',
+    placeholderCirc: 'اشرح كيف ضاعت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
+  },
+  theft: {
+    banner:       'التصريح الإلكتروني بسرقة الوثائق',
+    formTitle:    'استمارة التصريح بسبب السرقة',
+    stepDocs:     'الوثيقة / الوثائق المسروقة',
+    stepLoss:     'ظروف السرقة',
+    sectionLoss:  'ظروف السرقة',
+    labelDate:    'تاريخ السرقة المقدّر',
+    labelWilaya:  'ولاية مكان السرقة',
+    labelCommune: 'بلدية مكان السرقة',
+    labelCirc:    'وصف ظروف السرقة',
+    oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المسروقة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
+    reporterNature: 'صاحب الوثائق المسروقة',
+    printTitle:   'محضر التصريح بسرقة الوثائق',
+    printDocs:    'الوثيقة / الوثائق المسروقة — Documents volés',
+    printLoss:    'ظروف السرقة — Circonstances du vol',
+    placeholderCirc: 'اشرح كيف سُرقت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
+  },
+  damage: {
+    banner:       'التصريح الإلكتروني بإتلاف الوثائق',
+    formTitle:    'استمارة التصريح بسبب الإتلاف',
+    stepDocs:     'الوثيقة / الوثائق المتلفة',
+    stepLoss:     'ظروف الإتلاف',
+    sectionLoss:  'ظروف الإتلاف',
+    labelDate:    'تاريخ الإتلاف المقدّر',
+    labelWilaya:  'ولاية مكان الإتلاف',
+    labelCommune: 'بلدية مكان الإتلاف',
+    labelCirc:    'وصف ظروف الإتلاف',
+    oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المتلفة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
+    reporterNature: 'صاحب الوثائق المتلفة',
+    printTitle:   'محضر التصريح بإتلاف الوثائق',
+    printDocs:    'الوثيقة / الوثائق المتلفة — Documents endommagés',
+    printLoss:    'ظروف الإتلاف — Circonstances de la détérioration',
+    placeholderCirc: 'اشرح كيف تلفت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
+  }
+};
+
+function onDeclarationTypeChange() {
+  const val = document.querySelector('[name="declarationType"]:checked')?.value || 'loss';
+  const L = DECL_LABELS[val] || DECL_LABELS.loss;
+
+  // Banner title
+  const bannerTitle = document.getElementById('banner-title');
+  if (bannerTitle) bannerTitle.textContent = L.banner;
+
+  // Form h2 title
+  const formTitle = document.getElementById('form-title');
+  if (formTitle) formTitle.textContent = L.formTitle;
+
+  // Stepper labels
+  const stepLabel2 = document.getElementById('step-label-2');
+  if (stepLabel2) stepLabel2.textContent = L.stepDocs;
+  const stepLabel3 = document.getElementById('step-label-3');
+  if (stepLabel3) stepLabel3.textContent = L.stepLoss;
+
+  // Reporter nature label
+  const reporterNatureLabel = document.getElementById('reporter-nature-label');
+  if (reporterNatureLabel) reporterNatureLabel.textContent = L.reporterNature;
+
+  // Step 3 section and field labels
+  const sectionLoss = document.getElementById('section-label-loss');
+  if (sectionLoss) sectionLoss.textContent = L.sectionLoss;
+
+  const labelDate = document.getElementById('label-loss-date');
+  if (labelDate) labelDate.innerHTML = L.labelDate + ' <span class="req">*</span>';
+
+  const labelWilaya = document.getElementById('label-loss-wilaya');
+  if (labelWilaya) labelWilaya.innerHTML = L.labelWilaya + ' <span class="req">*</span>';
+
+  const labelCommune = document.getElementById('label-loss-commune');
+  if (labelCommune) labelCommune.innerHTML = L.labelCommune + ' <span class="req">*</span>';
+
+  const labelCirc = document.getElementById('label-loss-circumstances');
+  if (labelCirc) labelCirc.innerHTML = L.labelCirc + ' <span class="req">*</span>';
+
+  // Textarea placeholder
+  const lossCirc = document.getElementById('lossCircumstances');
+  if (lossCirc) lossCirc.placeholder = L.placeholderCirc;
+
+  // Oath text
+  const oathText = document.getElementById('oath-text');
+  if (oathText) oathText.innerHTML = L.oathText;
+
+  // Print section labels (live update)
+  const printTitleMain = document.getElementById('print-title-main');
+  if (printTitleMain) printTitleMain.textContent = L.printTitle;
+  const printDocsLabel = document.getElementById('print-docs-label');
+  if (printDocsLabel) printDocsLabel.textContent = L.printDocs;
+  const printLossLabel = document.getElementById('print-loss-label');
+  if (printLossLabel) printLossLabel.textContent = L.printLoss;
+}
+window.onDeclarationTypeChange = onDeclarationTypeChange;
 
 // ===== THEME =====
 function toggleTheme() {
