@@ -116,8 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('lossDate').max = new Date().toISOString().split('T')[0];
   initWilayas();
   addDoc_item(); // Add first document
-  // Load theme
-  if(localStorage.getItem('theme')==='dark') setTheme('dark');
+  // Load theme — default is light
+  const savedTheme = localStorage.getItem('theme');
+  setTheme(savedTheme ? savedTheme : 'light');
 });
 
 function initWilayas() {
