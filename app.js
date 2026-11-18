@@ -146,16 +146,8 @@ function loadCommunes(wilayaId, communeId) {
       sel.appendChild(opt);
     });
   } else {
-    // Generic communes
-    const w = WILAYAS.find(x=>x.code===wilaya);
-    if(w) {
-      ['مقر الولاية','دائرة 1','دائرة 2','دائرة 3','دائرة 4'].forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c + ' - ' + w.name;
-        opt.textContent = c + ' - ' + w.name;
-        sel.appendChild(opt);
-      });
-    }
+    // All 69 wilayas are defined in COMMUNES_BY_WILAYA above.
+    // This branch is only reached for invalid codes — the select stays with the placeholder.
   }
 }
 
@@ -221,16 +213,44 @@ function validateStep1() {
   if(!declType) { alert('يجب اختيار نوع التصريح'); return false; }
 
   const userType = document.getElementById('userType').value;
-  if(userType==='citizen') {
+  if(userType === 'citizen') {
+    // NIN: 18 digits, first digit 1 or 2
     const nin = document.getElementById('nin');
-    if(!nin.value || nin.value.length !== 18) {
-      setError(nin.closest('.field'), true); ok=false;
-    } else { setError(nin.closest('.field'), false); }
+    const ninVal = (nin.value || '').trim();
+    const ninValid = /^[12]\d{17}$/.test(ninVal);
+    setError(nin.closest('.field'), !ninValid);
+    if(!ninValid) ok = false;
+  } else if(userType === 'resident') {
+    // Foreign resident: residence card number required (non-empty)
+    const passportEl = document.getElementById('passportNum');
+    if(passportEl) {
+      const pVal = (passportEl.value || '').trim();
+      setError(passportEl.closest('.field'), !pVal);
+      if(!pVal) ok = false;
+    }
+  } else if(userType === 'tourist') {
+    // Tourist: passport number required (non-empty, at least 6 chars)
+    const passportEl = document.getElementById('passportNum');
+    if(passportEl) {
+      const pVal = (passportEl.value || '').trim();
+      const pValid = pVal.length >= 6;
+      setError(passportEl.closest('.field'), !pValid);
+      if(!pValid) ok = false;
+    }
+  } else if(userType === 'entity') {
+    // Legal entity: entity name required
+    const entityEl = document.getElementById('entityName');
+    if(entityEl) {
+      const eVal = (entityEl.value || '').trim();
+      setError(entityEl.closest('.field'), !eVal);
+      if(!eVal) ok = false;
+    }
   }
   const birthApprox = document.getElementById('birthDateApprox')?.checked;
   const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence','phone'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence','phone'];
   birthFields.forEach(id => {
     const el = document.getElementById(id);
+    if(!el) return;
     if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
     else { setError(el.closest('.field'), false); }
   });
@@ -261,6 +281,18 @@ function validateStep3() {
     if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
     else { setError(el.closest('.field'), false); }
   });
+  // Validate loss date is not in the future
+  const lossDateEl = document.getElementById('lossDate');
+  if(lossDateEl && lossDateEl.value) {
+    const lossDate = new Date(lossDateEl.value);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if(lossDate > today) {
+      setError(lossDateEl.closest('.field'), true);
+      ok = false;
+      lossDateEl.closest('.field').querySelector('.hint') && (lossDateEl.closest('.field').querySelector('.hint').textContent = 'لا يمكن أن يكون التاريخ في المستقبل');
+    }
+  }
   if(!document.getElementById('oath').checked) {
     alert('يجب الموافقة على الإفادة والتعهد قبل الإرسال');
     return false;
@@ -302,10 +334,13 @@ function validateRequired(el) {
 function validateNIN() {
   const el = document.getElementById('nin');
   const hint = el.nextElementSibling;
-  if(hint) hint.textContent = el.value.length + ' / 18';
-  if(document.getElementById('userType').value==='citizen') {
-    if(el.value.length !== 18) setError(el.closest('.field'), true);
-    else setError(el.closest('.field'), false);
+  const v = (el.value || '').trim();
+  if(hint) hint.textContent = v.length + ' / 18';
+  if(document.getElementById('userType').value === 'citizen') {
+    // Algerian NIN: 18 digits, first digit 1 (male) or 2 (female)
+    const isValid = /^[12]\d{17}$/.test(v);
+    setError(el.closest('.field'), !isValid);
+    if(hint) hint.style.color = isValid ? 'var(--gn-success,green)' : 'var(--gn-error,red)';
   }
 }
 function validatePhone(el) {
@@ -393,7 +428,10 @@ async function submitDeclaration() {
 
   try {
     if(window._db) {
-      await window._addDoc(window._collection(window._db, 'declarations'), {
+      // Use setDoc with refNum as document ID — Firestore rejects duplicate IDs,
+      // so this guarantees no two declarations share the same reference number.
+      const docRef = window._doc(window._collection(window._db, 'declarations'), refNum);
+      await window._setDoc(docRef, {
         ...data,
         createdAt: window._serverTimestamp()
       });
@@ -410,25 +448,79 @@ async function submitDeclaration() {
     }
   } catch(e) {
     showSpinner(false);
-    // Still show success with ref (save locally)
-    submittedData = data;
-    localStorage.setItem('lastDeclaration', JSON.stringify(data));
-    document.getElementById(`step-${currentStep}`).style.display='none';
-    document.getElementById('step-success').style.display='block';
-    document.getElementById('ref-display').textContent = refNum;
+    // Save draft to sessionStorage so user doesn't lose their data
+    try { sessionStorage.setItem('declarationDraft', JSON.stringify(data)); } catch(_) {}
+    // Show error notification — never show success screen on failure
+    showSubmitError(e);
   }
 }
 window.submitDeclaration=submitDeclaration;
 
 function generateRef() {
   const y = new Date().getFullYear();
-  const r = Math.floor(10000000 + Math.random()*89999999);
-  return `GN-${y}-${r}`;
+  // Use timestamp component (base-36, last 5 chars) + 3 random digits for uniqueness
+  const ts = Date.now().toString(36).slice(-5).toUpperCase();
+  const r = Math.floor(100 + Math.random() * 900);
+  return `GN-${y}-${ts}${r}`;
 }
 
 function showSpinner(v) {
   document.getElementById('spinner').style.display = v?'flex':'none';
 }
+
+// ===== HELPERS =====
+function escHtml(str) {
+  if(str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function showSubmitError(err) {
+  // Remove any existing error notification
+  const existing = document.getElementById('submit-error-toast');
+  if(existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'submit-error-toast';
+  toast.setAttribute('role', 'alert');
+  toast.style.cssText = `
+    position:fixed;bottom:24px;right:24px;left:24px;max-width:480px;margin:0 auto;
+    background:var(--gn-error,#c0392b);color:#fff;border-radius:10px;
+    padding:16px 20px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    display:flex;flex-direction:column;gap:10px;
+  `;
+  toast.innerHTML = `
+    <div style="font-weight:700;font-size:15px">⚠️ تعذّر حفظ التصريح</div>
+    <div style="font-size:13px;opacity:.9">حدث خطأ أثناء الإرسال. يُرجى التحقق من الاتصال بالإنترنت والمحاولة مجدداً. بياناتك محفوظة مؤقتاً.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="retrySubmit()" style="background:#fff;color:var(--gn-error,#c0392b);border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit">إعادة المحاولة</button>
+      <button onclick="document.getElementById('submit-error-toast').remove()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:6px;padding:8px 16px;cursor:pointer;font-family:inherit">إغلاق</button>
+    </div>
+  `;
+  document.body.appendChild(toast);
+}
+
+function retrySubmit() {
+  const existing = document.getElementById('submit-error-toast');
+  if(existing) existing.remove();
+  submitDeclaration();
+}
+window.retrySubmit = retrySubmit;
+
+function downloadDeclarationPDF() {
+  if(!submittedData) return;
+  const ref = submittedData.reference || '';
+  const prevTitle = document.title;
+  document.title = ref;
+  window.print();
+  // Restore title after print dialog
+  setTimeout(() => { document.title = prevTitle; }, 2000);
+}
+window.downloadDeclarationPDF = downloadDeclarationPDF;
 
 // ===== PRINT =====
 function printDeclaration() {
@@ -442,26 +534,26 @@ function printDeclaration() {
   const r = d.reporter;
   const wilaya = WILAYAS.find(w=>w.code===r.wilayaResidence);
   document.getElementById('print-reporter').innerHTML = `
-    <div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">${getUserTypeLabel(r.userType)}</div></div>
-    <div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">${r.nin||r.passportNum||r.entityName}</div></div>
-    <div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">${r.lastName} ${r.firstName}</div></div>
-    <div class="print-field"><div class="pf-label">NOM & PRÉNOM</div><div class="pf-val">${r.lastNameLat} ${r.firstNameLat}</div></div>
-    <div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">${r.birthDate} &mdash; ${r.birthPlace}</div></div>
-    <div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">${wilaya?wilaya.name:r.wilayaResidence} &mdash; ${r.communeResidence}</div></div>
-    <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${r.phone}</div></div>
-    <div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">${r.email||'—'}</div></div>
+    <div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">${escHtml(getUserTypeLabel(r.userType))}</div></div>
+    <div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">${escHtml(r.nin||r.passportNum||r.entityName)}</div></div>
+    <div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">${escHtml(r.lastName)} ${escHtml(r.firstName)}</div></div>
+    <div class="print-field"><div class="pf-label">NOM &amp; PRÉNOM</div><div class="pf-val">${escHtml(r.lastNameLat)} ${escHtml(r.firstNameLat)}</div></div>
+    <div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">${escHtml(r.birthDate)} &mdash; ${escHtml(r.birthPlace)}</div></div>
+    <div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">${escHtml(wilaya?wilaya.name:r.wilayaResidence)} &mdash; ${escHtml(r.communeResidence)}</div></div>
+    <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${escHtml(r.phone)}</div></div>
+    <div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">${escHtml(r.email)||'—'}</div></div>
   `;
 
   let docsHtml = '';
   d.documents.forEach((doc, i) => {
     const lossWilaya = WILAYAS.find(w=>w.code===d.loss.wilaya);
     docsHtml += `<div style="border:1px solid #ccc;padding:8px;margin-bottom:8px;border-radius:4px">
-      <div style="font-weight:700;margin-bottom:6px">الوثيقة ${i+1}: ${doc.type}</div>
+      <div style="font-weight:700;margin-bottom:6px">الوثيقة ${i+1}: ${escHtml(doc.type)}</div>
       <div class="print-grid">
-        <div class="print-field"><div class="pf-label">رقم الوثيقة</div><div class="pf-val">${doc.number}</div></div>
-        <div class="print-field"><div class="pf-label">تاريخ الإصدار</div><div class="pf-val">${doc.issueDate||'—'}</div></div>
-        <div class="print-field"><div class="pf-label">تاريخ الانتهاء</div><div class="pf-val">${doc.expDate||'—'}</div></div>
-        <div class="print-field"><div class="pf-label">جهة الإصدار</div><div class="pf-val">${doc.authority||'—'}</div></div>
+        <div class="print-field"><div class="pf-label">رقم الوثيقة</div><div class="pf-val">${escHtml(doc.number)}</div></div>
+        <div class="print-field"><div class="pf-label">تاريخ الإصدار</div><div class="pf-val">${escHtml(doc.issueDate)||'—'}</div></div>
+        <div class="print-field"><div class="pf-label">تاريخ الانتهاء</div><div class="pf-val">${escHtml(doc.expDate)||'—'}</div></div>
+        <div class="print-field"><div class="pf-label">جهة الإصدار</div><div class="pf-val">${escHtml(doc.authority)||'—'}</div></div>
       </div>
     </div>`;
   });
@@ -469,8 +561,8 @@ function printDeclaration() {
 
   const lossWilaya = WILAYAS.find(w=>w.code===d.loss.wilaya);
   document.getElementById('print-loss').innerHTML = `
-    <div class="print-field"><div class="pf-label">تاريخ الضياع</div><div class="pf-val">${d.loss.date}</div></div>
-    <div class="print-field"><div class="pf-label">مكان الضياع</div><div class="pf-val">${lossWilaya?lossWilaya.name:d.loss.wilaya} &mdash; ${d.loss.commune}</div></div>
+    <div class="print-field"><div class="pf-label">تاريخ الضياع</div><div class="pf-val">${escHtml(d.loss.date)}</div></div>
+    <div class="print-field"><div class="pf-label">مكان الضياع</div><div class="pf-val">${escHtml(lossWilaya?lossWilaya.name:d.loss.wilaya)} &mdash; ${escHtml(d.loss.commune)}</div></div>
   `;
   // Update print titles based on declaration type
   const declType = d.declarationType || 'loss';
