@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== مجموعة التصريحات =====
+    match /declarations/{docId} {
+
+      // القراءة: ممنوعة على العموم (للمسؤولين فقط عبر Firebase Console أو Admin SDK)
+      allow read: if false;
+
+      // الكتابة: مسموح فقط إذا توفرت الشروط التالية
+      allow create: if
+        // 1. البيانات المطلوبة موجودة
+        request.resource.data.keys().hasAll([
+          'reference', 'declarationType', 'reporter', 'documents', 'loss', 'status', 'source'
+        ])
+
+        // 2. رقم المرجع بالتنسيق الصحيح: GN-YYYY-XXXXX (حروف وأرقام)
+        && request.resource.data.reference is string
+        && request.resource.data.reference.matches('^GN-[0-9]{4}-[A-Z0-9]{8}$')
+
+        // 3. رقم المرجع لا يتجاوز 40 حرفاً (حماية من القيم الطويلة)
+        && request.resource.data.reference.size() <= 40
+
+        // 4. نوع التصريح صحيح
+        && request.resource.data.declarationType in ['loss', 'theft', 'damage']
+
+        // 5. مصدر الطلب هو التطبيق الرسمي فقط
+        && request.resource.data.source == 'E-declaration-GN'
+
+        // 6. الحالة عند الإنشاء يجب أن تكون 'submitted'
+        && request.resource.data.status == 'submitted'
+
+        // 7. لا يوجد مرجع مكرر:
+        //    نتحقق من أن معرّف الوثيقة (docId) هو نفسه رقم المرجع،
+        //    وبما أن Firestore لا يسمح بوثيقتين بنفس المعرّف،
+        //    هذا يضمن عدم تكرار رقم المرجع تلقائياً.
+        && docId == request.resource.data.reference
+
+        // 8. بيانات المُصرِّح موجودة وصحيحة
+        && request.resource.data.reporter is map
+        && request.resource.data.reporter.keys().hasAll(['userType', 'wilayaResidence'])
+        && request.resource.data.reporter.userType in ['citizen', 'resident', 'tourist', 'entity']
+
+        // 9. قائمة الوثائق غير فارغة
+        && request.resource.data.documents is list
+        && request.resource.data.documents.size() >= 1
+        && request.resource.data.documents.size() <= 10
+
+        // 10. بيانات مكان الحادثة موجودة
+        && request.resource.data.loss is map
+        && request.resource.data.loss.keys().hasAll(['date', 'wilaya', 'commune']);
+
+      // التعديل والحذف: ممنوعان تماماً من العميل
+      allow update, delete: if false;
+    }
+
+    // ===== منع الوصول لأي مجموعة أخرى =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
