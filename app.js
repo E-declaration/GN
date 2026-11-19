@@ -621,8 +621,8 @@ async function downloadDeclarationPDF() {
     const prevZIndex = printArea.style.zIndex;
     printArea.style.position = 'fixed';
     printArea.style.top      = '0';
-    printArea.style.left     = '0';
-    printArea.style.zIndex   = '-9999';
+    printArea.style.left     = '-9999px';
+    printArea.style.zIndex   = '9999';
 
     // Wait one more frame after repositioning
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
