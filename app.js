@@ -277,14 +277,25 @@ function validateStep1() {
       if(!eVal) ok = false;
     }
   }
-  const birthApprox = document.getElementById('birthDateApprox')?.checked;
-  const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence','phone'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence','phone'];
-  birthFields.forEach(id => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
-    else { setError(el.closest('.field'), false); }
-  });
+  // For legal entities (entity), skip personal fields (name, birth date, birth place)
+  if(userType !== 'entity') {
+    const birthApprox = document.getElementById('birthDateApprox')?.checked;
+    const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence','phone'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence','phone'];
+    birthFields.forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
+      else { setError(el.closest('.field'), false); }
+    });
+  } else {
+    // For entity: only validate residence and phone
+    ['wilayaResidence','communeResidence','phone'].forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
+      else { setError(el.closest('.field'), false); }
+    });
+  }
   return ok;
 }
 
@@ -383,11 +394,17 @@ window.validateRequired=validateRequired; window.validateNIN=validateNIN; window
 
 function onUserTypeChange() {
   const t = document.getElementById('userType').value;
+  const isEntity = t === 'entity';
   document.getElementById('nin-field').style.display = t==='citizen'?'':'none';
   document.getElementById('passport-field').style.display = (t==='resident'||t==='tourist')?'':'none';
-  document.getElementById('entity-field').style.display = t==='entity'?'':'none';
-  document.getElementById('lastName-field').style.display = t==='entity'?'none':'';
-  document.getElementById('firstName-field').style.display = t==='entity'?'none':'';
+  document.getElementById('entity-field').style.display = isEntity?'':'none';
+  document.getElementById('lastName-field').style.display = isEntity?'none':'';
+  document.getElementById('firstName-field').style.display = isEntity?'none':'';
+  // Hide birth date and birth place fields for legal entities
+  const birthDateField = document.getElementById('birthDate')?.closest('.field');
+  if(birthDateField) birthDateField.style.display = isEntity?'none':'';
+  const birthPlaceField = document.getElementById('birthPlace')?.closest('.field');
+  if(birthPlaceField) birthPlaceField.style.display = isEntity?'none':'';
 
   // Update passport/residence field label based on type
   const passportLabel = document.querySelector('#passport-field label');
@@ -598,61 +615,6 @@ function retrySubmit() {
 }
 window.retrySubmit = retrySubmit;
 
-async function downloadDeclarationPDF() {
-  if (!submittedData) return;
-
-  // 1. Populate the hidden print area (isPdf=true → just populate DOM, no print dialog)
-  printDeclaration(true);
-
-  // 2. Wait two frames for DOM to paint
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-  const printArea = document.getElementById('print-area');
-
-  // 3. Generate and download as PDF using html2pdf.js
-  if (typeof html2pdf !== 'undefined') {
-    const filename = (submittedData.reference || 'تصريح-GN') + '.pdf';
-
-    // Position the print area off-screen (not in flow) so html2canvas
-    // captures it from y=0, preventing a blank top portion in the PDF.
-    const prevPos    = printArea.style.position;
-    const prevTop    = printArea.style.top;
-    const prevLeft   = printArea.style.left;
-    const prevZIndex = printArea.style.zIndex;
-    printArea.style.position = 'fixed';
-    printArea.style.top      = '0';
-    printArea.style.left     = '-9999px';
-    printArea.style.zIndex   = '9999';
-
-    // Wait one more frame after repositioning
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-    const opt = {
-      margin:       [10, 10, 10, 10],
-      filename:     filename,
-      image:        { type: 'jpeg', quality: 0.97 },
-      html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false,
-                      scrollX: 0, scrollY: 0 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-    try {
-      await html2pdf().set(opt).from(printArea).save();
-    } catch(e) {
-      console.error('html2pdf error:', e);
-    }
-    // Restore original styles and hide print area
-    printArea.style.position = prevPos;
-    printArea.style.top      = prevTop;
-    printArea.style.left     = prevLeft;
-    printArea.style.zIndex   = prevZIndex;
-    printArea.style.display  = 'none';
-  } else {
-    // html2pdf not loaded — hide print area (no fallback to print dialog)
-    printArea.style.display = 'none';
-  }
-}
-window.downloadDeclarationPDF = downloadDeclarationPDF;
 
 // ===== PRINT =====
 function printDeclaration(isPdf) {
@@ -716,7 +678,6 @@ function printDeclaration(isPdf) {
   // Show print area so it can be rendered / captured
   printArea.style.display = 'block';
   if(isPdf) {
-    // Called from downloadDeclarationPDF — just populate DOM, don't open print dialog
     return;
   }
   document.title = submittedData.reference || 'تصريح-GN';
