@@ -464,7 +464,15 @@
         margin: 0 !important;
         padding: 16px !important;
         box-shadow: none !important;
+        color-scheme: light !important;
+        background: #ffffff !important;
+        color: #111111 !important;
       }
+      #print-area * {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+      }
+      #print-area .pf-label { color: #555555 !important; }
       .no-print { display: none !important; }
       @page {
         size: A4 portrait;
@@ -475,7 +483,36 @@
       display: none;
       direction: rtl;
       font-family: 'Cairo', sans-serif;
+      /* Always render in light mode regardless of theme */
+      color-scheme: light !important;
+      background: #ffffff !important;
+      color: #111111 !important;
     }
+    /* Force all children of print-area to use light mode colors */
+    #print-area, #print-area * {
+      --gn-bg: #f4f4f4 !important;
+      --gn-card: #ffffff !important;
+      --gn-text: #111111 !important;
+      --gn-text-muted: #555555 !important;
+      --gn-border: #cccccc !important;
+      --gn-input: #ffffff !important;
+      background-color: revert;
+      color: revert;
+    }
+    #print-area .print-header,
+    #print-area .print-ref,
+    #print-area .print-section,
+    #print-area .print-grid,
+    #print-area .print-field,
+    #print-area .pf-label,
+    #print-area .pf-val,
+    #print-area .print-footer {
+      background: #ffffff !important;
+      color: #111111 !important;
+    }
+    #print-area .pf-label { color: #555555 !important; }
+    #print-area .print-ref { border-color: #000000 !important; }
+    #print-area .print-section h3 { color: #111111 !important; border-color: #000000 !important; }
     .print-header {
       display: flex;
       align-items: center;
