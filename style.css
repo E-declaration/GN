@@ -44,27 +44,36 @@
       color: #fff;
       padding: 6px 20px;
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      flex-direction: row;
+      align-items: center;
       gap: 4px;
       font-size: 13px;
     }
     .top-bar a { color: #fff; text-decoration: none; }
-    .top-bar .phone {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      width: 100%;
-      justify-content: flex-end;
-    }
-    .top-bar .phone .material-icons { font-size:16px; }
+    
     .top-bar .actions {
       display: flex;
-      gap: 8px;
+      gap: 12px;
       align-items: center;
       width: 100%;
-      justify-content: flex-end;
+      justify-content: space-between;
+      flex-direction: row-reverse;
     }
+    .top-links {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-direction: row-reverse;
+    }
+    .top-links a {
+      color: #fff;
+      font-size: 12px;
+      text-decoration: none;
+      white-space: nowrap;
+      opacity: 0.9;
+      transition: opacity .2s;
+    }
+    .top-links a:hover { opacity: 1; text-decoration: underline; }
     .top-bar button {
       background: transparent;
       border: 1px solid rgba(255,255,255,.4);
@@ -109,6 +118,36 @@
       line-height: 1.6;
     }
     .banner-text p.main { font-size: 15px; font-weight: 700; }
+    .banner-text-center {
+      text-align: center;
+      flex: 1;
+    }
+    .banner-text-center .banner-p1 {
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.8;
+    }
+    .banner-text-center .banner-p2 {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.8;
+    }
+    .banner-text-center .banner-p3 {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.8;
+    }
+    .banner-1055 {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-top: 8px;
+    }
+    .img-1055 {
+      width: 110px;
+      height: auto;
+      object-fit: contain;
+    }
     .banner-title {
       display: flex;
       flex-direction: column;
