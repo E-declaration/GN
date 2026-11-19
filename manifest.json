@@ -10,15 +10,15 @@
   "dir": "rtl",
   "icons": [
     {
-      "src": "favicon.png",
+      "src": "logo_gn.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
-      "src": "favicon.png",
+      "src": "logo_gn.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpg",
       "purpose": "any maskable"
     }
   ]
