@@ -601,10 +601,10 @@ window.retrySubmit = retrySubmit;
 async function downloadDeclarationPDF() {
   if (!submittedData) return;
 
-  // 1. Populate the hidden print area (same logic as printDeclaration)
-  printDeclaration(false);  // populates DOM without opening print dialog
+  // 1. Populate the hidden print area (isPdf=true → just populate DOM, no print dialog)
+  printDeclaration(true);
 
-  // 2. Wait one frame for DOM to paint
+  // 2. Wait two frames for DOM to paint
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   const printArea = document.getElementById('print-area');
@@ -612,26 +612,44 @@ async function downloadDeclarationPDF() {
   // 3. Generate and download as PDF using html2pdf.js
   if (typeof html2pdf !== 'undefined') {
     const filename = (submittedData.reference || 'تصريح-GN') + '.pdf';
+
+    // Position the print area off-screen (not in flow) so html2canvas
+    // captures it from y=0, preventing a blank top portion in the PDF.
+    const prevPos    = printArea.style.position;
+    const prevTop    = printArea.style.top;
+    const prevLeft   = printArea.style.left;
+    const prevZIndex = printArea.style.zIndex;
+    printArea.style.position = 'fixed';
+    printArea.style.top      = '0';
+    printArea.style.left     = '0';
+    printArea.style.zIndex   = '-9999';
+
+    // Wait one more frame after repositioning
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
     const opt = {
       margin:       [10, 10, 10, 10],
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.97 },
-      html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
+      html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false,
+                      scrollX: 0, scrollY: 0 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
     try {
       await html2pdf().set(opt).from(printArea).save();
     } catch(e) {
-      // Fallback to browser print if html2pdf fails
-      window.print();
+      console.error('html2pdf error:', e);
     }
-    // Hide print area again
-    setTimeout(() => { printArea.style.display = 'none'; }, 500);
+    // Restore original styles and hide print area
+    printArea.style.position = prevPos;
+    printArea.style.top      = prevTop;
+    printArea.style.left     = prevLeft;
+    printArea.style.zIndex   = prevZIndex;
+    printArea.style.display  = 'none';
   } else {
-    // html2pdf not loaded yet — fallback to print dialog
-    window.print();
-    setTimeout(() => { printArea.style.display = 'none'; }, 1500);
+    // html2pdf not loaded — hide print area (no fallback to print dialog)
+    printArea.style.display = 'none';
   }
 }
 window.downloadDeclarationPDF = downloadDeclarationPDF;
