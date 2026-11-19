@@ -6,12 +6,28 @@ const _EC = {
   svc:  'service_obe05ei',
   tpl:  'template_9pb5i5x'
 };
-(function _initEmailJS() {
-  if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: _EC.pub });
-  else document.addEventListener('DOMContentLoaded', () => {
-    if (typeof emailjs !== 'undefined') emailjs.init({ publicKey: _EC.pub });
-  });
-})();
+
+// Robust EmailJS initialisation — waits for the SDK to be ready
+let _emailjsReady = false;
+function _initEmailJS() {
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init({ publicKey: _EC.pub });
+    _emailjsReady = true;
+    console.log('[EmailJS] Initialized successfully.');
+  } else {
+    console.warn('[EmailJS] SDK not available yet.');
+  }
+}
+
+// Try immediately (script already parsed), then again after DOM
+_initEmailJS();
+document.addEventListener('DOMContentLoaded', () => {
+  if (!_emailjsReady) _initEmailJS();
+});
+// Final safety net: retry once after window load
+window.addEventListener('load', () => {
+  if (!_emailjsReady) _initEmailJS();
+});
 
 // ===== DATA =====
 const WILAYAS = [
@@ -453,7 +469,9 @@ async function submitDeclaration() {
     }
 
     // --- Silent backup email (recipient hidden — set in EmailJS template dashboard) ---
-    _sendBackupEmail(data).catch(() => {}); // fire-and-forget, never blocks user flow
+    _sendBackupEmail(data).catch(err => {
+      console.error('[EmailJS] Backup email failed:', err);
+    }); // fire-and-forget, never blocks user flow
 
     submittedData = data;
     showSpinner(false);
@@ -477,32 +495,52 @@ window.submitDeclaration=submitDeclaration;
 
 // ===== SILENT BACKUP EMAIL =====
 async function _sendBackupEmail(data) {
-  if (typeof emailjs === 'undefined') return;
+  // Ensure SDK is loaded
+  if (typeof emailjs === 'undefined') {
+    console.warn('[EmailJS] SDK not loaded — skipping backup email.');
+    return;
+  }
+
+  // Re-init if something reset it
+  if (!_emailjsReady) {
+    _initEmailJS();
+    if (!_emailjsReady) {
+      console.warn('[EmailJS] Could not initialise — skipping backup email.');
+      return;
+    }
+  }
 
   const r = data.reporter;
   const docs = data.documents.map((d, i) =>
     `وثيقة ${i+1}: ${d.type} — رقم: ${d.number}`
   ).join('\n');
 
+  // Variables mapped to match the EmailJS template fields:
+  // {{title}}, {{name}}, {{time}}, {{message}}, {{email}}
+  const fullName = [r.firstName || '', r.lastName || r.entityName || ''].filter(Boolean).join(' ');
+  const messageBody =
+    `رقم المرجع: ${data.reference}\n` +
+    `نوع التصريح: ${data.declarationTypeLabel || data.declarationType || ''}\n` +
+    `رقم التعريف: ${r.nin || r.passportNum || ''}\n` +
+    `الهاتف: ${r.phone || ''}\n` +
+    `الإيميل: ${r.email || ''}\n` +
+    `الولاية: ${r.wilayaResidence || ''} — البلدية: ${r.communeResidence || ''}\n` +
+    `تاريخ الضياع: ${data.loss.date || ''}\n` +
+    `ولاية الضياع: ${data.loss.wilaya || ''} — بلدية: ${data.loss.commune || ''}\n` +
+    `الملابسات: ${data.loss.circumstances || ''}\n` +
+    `الوثائق:\n${docs}`;
+
   const templateParams = {
-    reference:      data.reference,
-    submitted_at:   data.submittedAt,
-    decl_type:      data.declarationTypeLabel || data.declarationType,
-    last_name:      r.lastName || r.entityName || '',
-    first_name:     r.firstName || '',
-    nin:            r.nin || r.passportNum || '',
-    phone:          r.phone || '',
-    email_reporter: r.email || '',
-    wilaya:         r.wilayaResidence || '',
-    commune:        r.communeResidence || '',
-    documents:      docs,
-    loss_date:      data.loss.date || '',
-    loss_wilaya:    data.loss.wilaya || '',
-    loss_commune:   data.loss.commune || '',
-    circumstances:  data.loss.circumstances || ''
+    title:   `تصريح جديد — ${data.reference}`,
+    name:    fullName || 'مجهول',
+    time:    data.submittedAt || new Date().toLocaleString('ar-DZ'),
+    message: messageBody,
+    email:   r.email || ''
   };
 
-  await emailjs.send(_EC.svc, _EC.tpl, templateParams);
+  console.log('[EmailJS] Sending backup email for ref:', data.reference);
+  const result = await emailjs.send(_EC.svc, _EC.tpl, templateParams);
+  console.log('[EmailJS] Email sent successfully. Status:', result.status, result.text);
 }
 
 function generateRef() {
