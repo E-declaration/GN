@@ -136,6 +136,12 @@ const DOC_TYPES = [
   "وثيقة أخرى"
 ];
 
+// ===== UTILS =====
+function debounce(fn, delay) {
+  let timer;
+  return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
+}
+
 // ===== INIT =====
 let docCount = 0;
 let currentStep = 1;
@@ -150,6 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load theme — default is light
   const savedTheme = localStorage.getItem('theme');
   setTheme(savedTheme ? savedTheme : 'light');
+  // Restore any saved draft (persists across reloads / network drops)
+  restoreFormDraft();
+  // Auto-save draft on every field change
+  const _saveDraft = debounce(saveFormDraft, 400);
+  document.addEventListener('input',  _saveDraft);
+  document.addEventListener('change', _saveDraft);
 });
 
 function initWilayas() {
@@ -491,6 +503,7 @@ async function submitDeclaration() {
     }); // fire-and-forget, never blocks user flow
 
     submittedData = data;
+    clearFormDraft();
     showSpinner(false);
     document.getElementById(`step-${currentStep}`).style.display='none';
     document.getElementById('step-success').style.display='block';
@@ -631,7 +644,7 @@ function printDeclaration(isPdf) {
     <div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">${escHtml(getUserTypeLabel(r.userType))}</div></div>
     <div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">${escHtml(r.nin||r.passportNum||r.entityName)}</div></div>
     <div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">${escHtml(r.lastName)} ${escHtml(r.firstName)}</div></div>
-    <div class="print-field"><div class="pf-label">NOM &amp; PRÉNOM</div><div class="pf-val">${escHtml(r.lastNameLat)} ${escHtml(r.firstNameLat)}</div></div>
+    <div class="print-field"><div class="pf-label">الاسم بالحروف اللاتينية</div><div class="pf-val">${escHtml(r.lastNameLat)} ${escHtml(r.firstNameLat)}</div></div>
     <div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">${escHtml(r.birthDate)} &mdash; ${escHtml(r.birthPlace)}</div></div>
     <div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">${escHtml(wilaya?wilaya.name:r.wilayaResidence)} &mdash; ${escHtml(r.communeResidence)}</div></div>
     <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${escHtml(r.phone)}</div></div>
@@ -673,6 +686,30 @@ function printDeclaration(isPdf) {
 
   document.getElementById('print-circumstances').textContent = d.loss.circumstances;
 
+  // QR code — deterministic per declaration, generated only for real (non-preview) submissions
+  if(d.status !== 'preview') {
+    const qrContainer = document.getElementById('qr-code-container');
+    if(qrContainer && typeof QRCode !== 'undefined') {
+      qrContainer.innerHTML = '';
+      const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
+      const qrText = [
+        d.reference,
+        d.declarationTypeLabel,
+        (d.reporter.lastName + ' ' + d.reporter.firstName).trim(),
+        d.loss.date,
+        (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
+      ].filter(Boolean).join(' | ');
+      new QRCode(qrContainer, {
+        text: qrText,
+        width: 80,
+        height: 80,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  }
+
   const printArea = document.getElementById('print-area');
   const prevTitle = document.title;
   // Show print area so it can be rendered / captured
@@ -698,8 +735,231 @@ function getUserTypeLabel(t) {
   return {citizen:'مواطن جزائري',resident:'مقيم أجنبي',entity:'شخص معنوي',tourist:'سائح أجنبي'}[t]||t;
 }
 
-function newDeclaration() { location.reload(); }
+function newDeclaration() { clearFormDraft(); location.reload(); }
 window.newDeclaration=newDeclaration;
+
+// ===== LOCAL STORAGE DRAFT (persist form data across reloads / network drops) =====
+const DRAFT_KEY = 'gn_declaration_draft';
+
+function saveFormDraft() {
+  try {
+    const draft = { v: 1 };
+    ['userType','nin','passportNum','entityName','lastName','firstName',
+     'lastNameLat','firstNameLat','birthDate','birthYear','birthPlace',
+     'phone','email','lossDate','lossCircumstances'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) draft[id] = el.value;
+    });
+    // Wilayas (need separate restore with loadCommunes)
+    ['wilayaResidence','communeResidence','lossWilaya','lossCommune'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) draft[id] = el.value;
+    });
+    // Radios
+    const declType = document.querySelector('[name="declarationType"]:checked');
+    if(declType) draft.declarationType = declType.value;
+    const repNature = document.querySelector('[name="reporterNature"]:checked');
+    if(repNature) draft.reporterNature = repNature.value;
+    // Checkboxes
+    const ba = document.getElementById('birthDateApprox');
+    if(ba) draft.birthDateApprox = ba.checked;
+    const oa = document.getElementById('oath');
+    if(oa) draft.oath = oa.checked;
+    // Docs
+    const docs = [];
+    for(let i = 1; i <= docCount; i++) {
+      if(!document.getElementById(`doc-${i}`)) continue;
+      docs.push({
+        type:      document.getElementById(`docType-${i}`)?.value     || '',
+        number:    document.getElementById(`docNum-${i}`)?.value      || '',
+        issueDate: document.getElementById(`docIssueDate-${i}`)?.value|| '',
+        expDate:   document.getElementById(`docExpDate-${i}`)?.value  || '',
+        authority: document.getElementById(`docAuthority-${i}`)?.value|| ''
+      });
+    }
+    draft.docs = docs;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch(e) {}
+}
+
+function clearFormDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
+
+function restoreFormDraft() {
+  try {
+    const draftStr = localStorage.getItem(DRAFT_KEY);
+    if(!draftStr) return;
+    const draft = JSON.parse(draftStr);
+    if(!draft || draft.v !== 1) return;
+
+    // Declaration type first (drives labels)
+    if(draft.declarationType) {
+      const r = document.querySelector(`[name="declarationType"][value="${draft.declarationType}"]`);
+      if(r) { r.checked = true; onDeclarationTypeChange(); }
+    }
+    // User type (drives field visibility)
+    if(draft.userType) {
+      const sel = document.getElementById('userType');
+      if(sel) { sel.value = draft.userType; onUserTypeChange(); }
+    }
+    // Plain text/select fields
+    ['nin','passportNum','entityName','lastName','firstName',
+     'lastNameLat','firstNameLat','birthDate','birthYear','birthPlace',
+     'phone','email','lossDate','lossCircumstances'].forEach(id => {
+      if(draft[id] !== undefined) { const el = document.getElementById(id); if(el) el.value = draft[id]; }
+    });
+    // Wilaya + commune (need loadCommunes first, then set commune after delay)
+    if(draft.wilayaResidence) {
+      const sel = document.getElementById('wilayaResidence');
+      if(sel) {
+        sel.value = draft.wilayaResidence;
+        loadCommunes('wilayaResidence', 'communeResidence');
+        if(draft.communeResidence) {
+          setTimeout(() => { const c = document.getElementById('communeResidence'); if(c) c.value = draft.communeResidence; }, 60);
+        }
+      }
+    }
+    if(draft.lossWilaya) {
+      const sel = document.getElementById('lossWilaya');
+      if(sel) {
+        sel.value = draft.lossWilaya;
+        loadCommunes('lossWilaya', 'lossCommune');
+        if(draft.lossCommune) {
+          setTimeout(() => { const c = document.getElementById('lossCommune'); if(c) c.value = draft.lossCommune; }, 60);
+        }
+      }
+    }
+    // Reporter nature radio
+    if(draft.reporterNature) {
+      const r = document.querySelector(`[name="reporterNature"][value="${draft.reporterNature}"]`);
+      if(r) r.checked = true;
+    }
+    // Birth approx checkbox
+    if(draft.birthDateApprox) {
+      const el = document.getElementById('birthDateApprox');
+      if(el) { el.checked = true; toggleBirthDateApprox(); }
+    }
+    // Oath checkbox
+    if(draft.oath) {
+      const el = document.getElementById('oath');
+      if(el) el.checked = true;
+    }
+    // Docs
+    if(draft.docs && draft.docs.length > 0) {
+      const docList = document.getElementById('doc-list');
+      if(docList) {
+        docList.innerHTML = '';
+        docCount = 0;
+        draft.docs.forEach(doc => {
+          addDoc_item();
+          const i = docCount;
+          const sv = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+          sv(`docType-${i}`,      doc.type);
+          sv(`docNum-${i}`,       doc.number);
+          sv(`docIssueDate-${i}`, doc.issueDate);
+          sv(`docExpDate-${i}`,   doc.expDate);
+          sv(`docAuthority-${i}`, doc.authority);
+        });
+      }
+    }
+  } catch(e) { console.warn('[Draft] restore failed', e); }
+}
+
+// ===== PREVIEW DECLARATION =====
+function previewDeclaration() {
+  if(!validateStep3()) return;
+
+  // Build a preview data object from current form state
+  const docs = [];
+  for(let i = 1; i <= docCount; i++) {
+    if(!document.getElementById(`doc-${i}`)) continue;
+    docs.push({
+      type:      document.getElementById(`docType-${i}`)?.value     || '',
+      number:    document.getElementById(`docNum-${i}`)?.value      || '',
+      issueDate: document.getElementById(`docIssueDate-${i}`)?.value|| '',
+      expDate:   document.getElementById(`docExpDate-${i}`)?.value  || '',
+      authority: document.getElementById(`docAuthority-${i}`)?.value|| ''
+    });
+  }
+  const declType = document.querySelector('[name="declarationType"]:checked')?.value || 'loss';
+  const pData = {
+    reference: '[ معاينة — لم يُرسل بعد ]',
+    submittedAt: new Date().toISOString(),
+    reporter: {
+      nature:          document.querySelector('[name="reporterNature"]:checked')?.value || 'self',
+      userType:        document.getElementById('userType').value,
+      nin:             document.getElementById('nin').value,
+      passportNum:     document.getElementById('passportNum').value,
+      entityName:      document.getElementById('entityName').value,
+      lastName:        document.getElementById('lastName').value,
+      firstName:       document.getElementById('firstName').value,
+      lastNameLat:     document.getElementById('lastNameLat').value,
+      firstNameLat:    document.getElementById('firstNameLat').value,
+      birthDate:       document.getElementById('birthDateApprox')?.checked
+                         ? (document.getElementById('birthYear').value + ' (مفترض)')
+                         : document.getElementById('birthDate').value,
+      birthPlace:      document.getElementById('birthPlace').value,
+      wilayaResidence: document.getElementById('wilayaResidence').value,
+      communeResidence:document.getElementById('communeResidence').value,
+      phone:           document.getElementById('phone').value,
+      email:           document.getElementById('email').value
+    },
+    documents: docs,
+    loss: {
+      date:          document.getElementById('lossDate').value,
+      wilaya:        document.getElementById('lossWilaya').value,
+      commune:       document.getElementById('lossCommune').value,
+      circumstances: document.getElementById('lossCircumstances').value
+    },
+    declarationType:      declType,
+    declarationTypeLabel: {loss:'تصريح بالضياع',theft:'تصريح بالسرقة',damage:'تصريح بالإتلاف'}[declType] || 'تصريح بالضياع',
+    status: 'preview'
+  };
+
+  // Temporarily populate the print area using existing logic
+  const savedData = submittedData;
+  submittedData = pData;
+  printDeclaration(true); // isPdf=true → populate only, no QR, no window.print()
+  submittedData = savedData;
+
+  // Clone populated print-area HTML into the preview modal
+  const printArea = document.getElementById('print-area');
+  const previewContent = document.getElementById('preview-print-content');
+  if(previewContent) {
+    previewContent.innerHTML = printArea.innerHTML;
+    // Hide QR section in preview (no reference number yet)
+    const qrDiv = previewContent.querySelector('#print-qr');
+    if(qrDiv) qrDiv.style.display = 'none';
+  }
+  // Hide print area again
+  printArea.style.display = 'none';
+
+  // Show overlay
+  const overlay = document.getElementById('preview-overlay');
+  if(overlay) {
+    overlay.style.display = 'flex';
+    document.documentElement.style.overflow = 'hidden';
+    overlay.scrollTop = 0;
+  }
+}
+window.previewDeclaration = previewDeclaration;
+
+function correctInfo() {
+  const overlay = document.getElementById('preview-overlay');
+  if(overlay) overlay.style.display = 'none';
+  document.documentElement.style.overflow = '';
+  goToStep(1);
+}
+window.correctInfo = correctInfo;
+
+function submitFromPreview() {
+  const overlay = document.getElementById('preview-overlay');
+  if(overlay) overlay.style.display = 'none';
+  document.documentElement.style.overflow = '';
+  submitDeclaration();
+}
+window.submitFromPreview = submitFromPreview;
 
 // ===== DECLARATION TYPE CHANGE =====
 const DECL_LABELS = {
@@ -716,8 +976,8 @@ const DECL_LABELS = {
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق الضائعة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق الضائعة',
     printTitle:   'محضر التصريح بضياع الوثائق',
-    printDocs:    'الوثيقة / الوثائق الضائعة — Documents perdus',
-    printLoss:    'ظروف الضياع — Circonstances de la perte',
+    printDocs:    'الوثيقة / الوثائق الضائعة',
+    printLoss:    'ظروف الضياع',
     placeholderCirc: 'اشرح كيف ضاعت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
   },
   theft: {
@@ -733,8 +993,8 @@ const DECL_LABELS = {
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المسروقة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق المسروقة',
     printTitle:   'محضر التصريح بسرقة الوثائق',
-    printDocs:    'الوثيقة / الوثائق المسروقة — Documents volés',
-    printLoss:    'ظروف السرقة — Circonstances du vol',
+    printDocs:    'الوثيقة / الوثائق المسروقة',
+    printLoss:    'ظروف السرقة',
     placeholderCirc: 'اشرح كيف سُرقت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
   },
   damage: {
@@ -750,8 +1010,8 @@ const DECL_LABELS = {
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المتلفة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق المتلفة',
     printTitle:   'محضر التصريح بإتلاف الوثائق',
-    printDocs:    'الوثيقة / الوثائق المتلفة — Documents endommagés',
-    printLoss:    'ظروف الإتلاف — Circonstances de la détérioration',
+    printDocs:    'الوثيقة / الوثائق المتلفة',
+    printLoss:    'ظروف الإتلاف',
     placeholderCirc: 'اشرح كيف تلفت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
   }
 };
