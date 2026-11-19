@@ -142,25 +142,22 @@
       mix-blend-mode: screen;
     }
     .banner-title {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 6px;
+      display: block;
+      margin-top: 0;
       text-align: center;
     }
     .banner-title .material-icons {
-      font-size: 32px;
-      color: var(--gn-gold);
+      display: none;
     }
     .banner-title h1 {
       font-size: 20px;
       font-weight: 700;
       color: white;
+      line-height: 1.9;
+      margin: 0;
     }
     @media(max-width:640px) {
-      .banner-title h1 { font-size:13px; }
+      .banner-title h1 { font-size:15px; }
     }
     /* ===== MAIN CONTENT ===== */
     main {
@@ -572,11 +569,22 @@
     @media(max-width: 640px) {
       /* Top bar */
       .top-bar {
-        padding: 8px 14px;
-        font-size: 12px;
+        padding: 6px 10px;
+        font-size: 11px;
         gap: 4px;
       }
-      .top-bar .actions { width: 100%; justify-content: flex-end; }
+      .top-bar .actions {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px;
+      }
+      .top-links {
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        justify-content: flex-end;
+      }
+      .top-links a { font-size: 10.5px; }
       .top-bar .phone { width: 100%; justify-content: flex-end; }
 
       /* Banner */
@@ -587,9 +595,7 @@
       .banner-text-col .banner-p2 { font-size: 14px; }
       .banner-text-col .banner-p3 { font-size: 15px; }
       .img-1055 { width: 70px; }
-      .banner-title { margin-top: 6px; }
-      .banner-title .material-icons { font-size: 20px; }
-      .banner-title h1 { font-size: 13px; line-height: 1.4; }
+      .banner-title h1 { font-size: 13px; line-height: 1.6; }
 
       /* Main layout */
       main { padding: 10px 8px 40px; }
@@ -659,7 +665,7 @@
 
     @media(max-width: 400px) {
       .top-bar { font-size: 11px; }
-      .banner-title h1 { font-size: 12px; }
+      .banner-title h1 { font-size: 11px; }
       .step { min-width: 64px; }
       .step-label { font-size: 9px; max-width: 60px; }
       .form-card { padding: 12px 8px; }
