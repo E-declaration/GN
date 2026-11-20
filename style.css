@@ -519,27 +519,45 @@
 
     @media print {
       * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
-      body > *:not(#print-area),
-      header, .app-header, nav, footer, .app-footer,
-      .step-nav, .step-content,
+      /* ── Hide everything by default ── */
+      header, .top-bar, .banner, .no-print,
+      .step-nav, .stepper,
       #step-1, #step-2, #step-3, #step-success,
-      #submit-error-toast { display: none !important; }
-      #print-area {
-        display: block !important;
-        position: static !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 16px !important;
+      #submit-error-toast, #print-toolbar,
+      #preview-overlay, footer { display: none !important; }
+
+      /* ── Show main containers needed for step-print ── */
+      main, .form-card, #form-container { display: block !important; }
+      /* Remove card styling so it doesn't add a box around the printed page */
+      .form-card, #form-container {
         box-shadow: none !important;
-        color-scheme: light !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+      }
+
+      /* ── step-print: the new print view ── */
+      #step-print { display: block !important; }
+      #print-toolbar { display: none !important; }
+      #decl-view {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
         background: #ffffff !important;
         color: #111111 !important;
       }
-      #print-area * {
+      #decl-view * {
         background-color: #ffffff !important;
         color: #111111 !important;
       }
-      #print-area .pf-label { color: #555555 !important; }
+      #decl-view .dv-label { color: #555555 !important; }
+
+      /* ── #print-area is used only for the preview modal clone, not for real printing ── */
+      #print-area { display: none !important; }
       .no-print { display: none !important; }
       @page {
         size: A4 portrait;
@@ -860,25 +878,5 @@
   #print-toolbar { position: sticky; }
 }
 
-/* ===== @media print for step-print ===== */
-@media print {
-  /* Hide everything except the declaration content */
-  #print-toolbar,
-  .top-bar, .banner, .step-nav,
-  #step-1, #step-2, #step-3, #step-success,
-  #submit-error-toast, footer { display: none !important; }
-
-  #step-print { display: block !important; }
-  #print-toolbar { display: none !important; }
-
-  #decl-view {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-  }
-
-  @page { size: A4 portrait; margin: 10mm 12mm; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-}
+/* ===== @media print — unified (see the print block above) ===== */
+/* The single @media print block above handles both #step-print and #print-area. */
