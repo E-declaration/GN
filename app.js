@@ -782,24 +782,44 @@ function printDeclaration(isPdf) {
 </body>
 </html>`;
 
-  // Open in a new tab — works universally, including Android Chrome
+  // Strategy: try iframe print first (works on desktop), then fallback to download (works on Android Chrome)
   const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
   const blobUrl = URL.createObjectURL(blob);
-  const win = window.open(blobUrl, '_blank');
 
-  // Cleanup
-  setTimeout(() => {
-    printArea.style.display = 'none';
-    document.title = prevTitle;
-    // Revoke after a delay to allow the new tab to fully load
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-  }, 500);
+  // Detect Android
+  const isAndroid = /android/i.test(navigator.userAgent);
 
-  if(!win) {
-    // Pop-up blocked — fallback: direct window.print() on current page
-    printArea.style.display = 'block';
-    window.print();
-    setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
+  if (isAndroid) {
+    // On Android Chrome, window.open() and window.print() are unreliable.
+    // Best UX: download the HTML file — user opens it and prints from browser.
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = refNum + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      printArea.style.display = 'none';
+      document.title = prevTitle;
+      URL.revokeObjectURL(blobUrl);
+    }, 2000);
+    // Show hint instead of alert
+    const hint = document.getElementById('android-print-hint');
+    if (hint) hint.style.display = 'block';
+  } else {
+    // Desktop / iOS: open in new tab
+    const win = window.open(blobUrl, '_blank');
+    setTimeout(() => {
+      printArea.style.display = 'none';
+      document.title = prevTitle;
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    }, 500);
+    if (!win) {
+      // Popup blocked fallback
+      printArea.style.display = 'block';
+      window.print();
+      setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
+    }
   }
 }
 window.printDeclaration=printDeclaration;
@@ -1012,7 +1032,10 @@ function previewDeclaration() {
   const overlay = document.getElementById('preview-overlay');
   if(overlay) {
     overlay.style.display = 'flex';
-    document.documentElement.style.overflow = 'hidden';
+    // Don't lock html overflow — it breaks overlay scroll on Android Chrome
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
     overlay.scrollTop = 0;
   }
 }
@@ -1022,6 +1045,9 @@ function correctInfo() {
   const overlay = document.getElementById('preview-overlay');
   if(overlay) overlay.style.display = 'none';
   document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
   goToStep(1);
 }
 window.correctInfo = correctInfo;
@@ -1030,6 +1056,9 @@ function submitFromPreview() {
   const overlay = document.getElementById('preview-overlay');
   if(overlay) overlay.style.display = 'none';
   document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
   submitDeclaration();
 }
 window.submitFromPreview = submitFromPreview;
