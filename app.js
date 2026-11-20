@@ -507,13 +507,15 @@ function onGenderChange(selected) {
   ['male','female','other'].forEach(v => {
     const cb = document.getElementById(`gender-${v}`);
     const opt = document.getElementById(`gender-${v}-opt`);
-    if(!cb || !opt) return;
+    if(!cb) return;
     if(v === selected) {
       cb.checked = true;
-      opt.classList.add('selected');
+      if(opt) opt.classList.add('selected');
+      else cb.closest('label')?.classList.add('selected');
     } else {
       cb.checked = false;
-      opt.classList.remove('selected');
+      if(opt) opt.classList.remove('selected');
+      else cb.closest('label')?.classList.remove('selected');
     }
   });
   // Hide error
@@ -902,12 +904,7 @@ function printDeclaration(isPdf) {
     }
   })();
 
-  // KEY FIX: open the window immediately while we're still inside the user gesture.
-  // Any setTimeout (even 0ms) breaks the gesture chain on Android Chrome and causes
-  // window.open to be silently blocked as a popup. We open a blank window now,
-  // then write the content into it once the QR canvas->img conversion finishes.
-  const printWin = window.open('', '_blank');
-
+  // Build and trigger print/download — called after QR canvas→img conversion
   function _buildAndWrite() {
     // Replace relative logo paths with absolute URLs so they load in the new window / blob
     const _printBody = printArea.innerHTML
@@ -920,45 +917,55 @@ function printDeclaration(isPdf) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escHtml(refNum)}</title>
-  <style>${printStyles}</style>
+  <style>${printStyles}
+    #mobile-print-btn{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      background:#27ae60;color:#fff;border:none;border-radius:10px;padding:14px 32px;
+      font-size:16px;font-family:'Cairo',sans-serif;cursor:pointer;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
+    @media(max-width:768px){#mobile-print-btn{display:block;}}
+  </style>
 </head>
 <body>
+  <button id="mobile-print-btn" onclick="window.print()">🖨️ طباعة / تنزيل</button>
   <div id="print-area">
     ${_printBody}
   </div>
   <script>
-    // Auto-print after fonts & images load
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        window.print();
-      }, 800);
-    });
-    // Fallback: print after 2.5s regardless
-    setTimeout(function() { window.print(); }, 2500);
+    // Auto-print after fonts & images load (desktop)
+    var _isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+    if(!_isMobile){
+      window.addEventListener('load', function() {
+        setTimeout(function(){ window.print(); }, 800);
+      });
+      setTimeout(function(){ window.print(); }, 2500);
+    }
   <\/script>
 </body>
 </html>`;
 
-    if (printWin && !printWin.closed) {
-      // Write content into the already-open window
-      printWin.document.open();
-      printWin.document.write(printHtml);
-      printWin.document.close();
-    } else {
-      // Window was blocked (popup blocker) — fall back to Blob download/navigate
-      try {
-        const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
-        const blobUrl = URL.createObjectURL(blob);
-        // Try opening in a new tab via anchor click (more reliable on mobile)
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.target = '_blank';
+    // Always use Blob approach — most reliable on Android Chrome / GitHub Pages
+    // window.open() popup is unreliable; Blob download works without popup permission
+    try {
+      const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      // On mobile: download as file (reliable); on desktop: open in new tab
+      if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
         a.download = refNum + '.html';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      } catch(_e) {
+      }
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+    } catch(_e) {
+      // Last resort: try window.open
+      try {
+        const pw = window.open('', '_blank');
+        if(pw) { pw.document.open(); pw.document.write(printHtml); pw.document.close(); }
+        else { alert('تعذّر فتح نافذة الطباعة. يُرجى السماح للنوافذ المنبثقة في المتصفح والمحاولة مجدداً.'); }
+      } catch(__) {
         alert('تعذّر فتح نافذة الطباعة. يُرجى السماح للنوافذ المنبثقة في المتصفح والمحاولة مجدداً.');
       }
     }
@@ -975,7 +982,7 @@ function printDeclaration(isPdf) {
     }, 500);
   }
 
-  // Wait for QR canvas→img conversion (300ms) then write content
+  // Wait for QR canvas→img conversion (300ms) then build
   setTimeout(_buildAndWrite, 350);
 }
 window.printDeclaration=printDeclaration;
