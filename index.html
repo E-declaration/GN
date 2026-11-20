@@ -186,6 +186,17 @@
           <input type="text" id="firstNameLat" placeholder="PRÉNOM" oninput="enforceLatin(this)" onblur="this.value=this.value.trim().toUpperCase()">
         </div>
 
+        <div class="field" id="fatherName-field">
+          <label for="fatherName">اسم ولقب الأب</label>
+          <input type="text" id="fatherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
+          <span class="hint">اختياري — أي خط أو لغة مقبولة</span>
+        </div>
+        <div class="field" id="motherName-field">
+          <label for="motherName">اسم ولقب الأم</label>
+          <input type="text" id="motherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
+          <span class="hint">اختياري — أي خط أو لغة مقبولة</span>
+        </div>
+
         <div class="field">
           <label for="birthDate">تاريخ الميلاد <span class="req">*</span></label>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
