@@ -862,11 +862,9 @@ function showPrintStep(d) {
   if (mHint) mHint.style.display = isMobile ? 'block' : 'none';
 
   // ── Switch to step-print ──
-  // Hide all steps
-  ['step-1','step-2','step-3','step-success'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  // Hide main app container and show print view
+  var mainEl = document.querySelector('main');
+  if (mainEl) mainEl.style.display = 'none';
   document.getElementById('step-print').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -880,6 +878,8 @@ function showPrintStep(d) {
 window.doPrint = function() { window.print(); };
 window.closePrintView = function() {
   document.getElementById('step-print').style.display = 'none';
+  var mainEl = document.querySelector('main');
+  if (mainEl) mainEl.style.display = '';
   document.getElementById('step-success').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
