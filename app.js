@@ -904,63 +904,218 @@ function printDeclaration(isPdf) {
     }
   })();
 
-  // Build and trigger print — works on ALL browsers/devices by printing directly
-  // in the current page (no Blob URL, no popup window, no new tab required).
-  // Blob/popup approaches fail on GitHub Pages due to CSP and popup blockers.
+  // ===== NEW PRINT SYSTEM =====
+  // Opens a fully self-contained HTML page in a new window/tab.
+  // This approach works on ALL devices: desktop Chrome/Firefox/Safari,
+  // Android Chrome, iOS Safari (Save to Files), and even PWA mode.
+  // No Blob CSP issues — we write directly to window.document.
+  // ============================
   function _buildAndWrite() {
-    const styleId = '__gn_print_style__';
-    let st = document.getElementById(styleId);
-    if (!st) {
-      st = document.createElement('style');
-      st.id = styleId;
-      document.head.appendChild(st);
+    // Collect all the HTML already built in the hidden print-area
+    const printHtml = document.getElementById('print-area').innerHTML;
+
+    // Encode logo as data-URL so the new window doesn't need network access
+    // (fetched once here; falls back to relative URL if fetch fails)
+    function _getLogoDataUrl(cb) {
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', _baseUrl + 'logo_gn.jpg', true);
+        xhr.responseType = 'blob';
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            var reader = new FileReader();
+            reader.onloadend = function() { cb(reader.result); };
+            reader.readAsDataURL(xhr.response);
+          } else { cb(null); }
+        };
+        xhr.onerror = function() { cb(null); };
+        xhr.send();
+      } catch(e) { cb(null); }
     }
 
-    // Hide everything except #print-area during printing
-    st.textContent = `
-      @media print {
-        body > *:not(#print-area),
-        header, footer, nav,
-        .app-header, .step-nav, .app-footer,
-        #step-1, #step-2, #step-3, #step-success,
-        #submit-error-toast,
-        #android-print-hint { display: none !important; }
-        #print-area {
-          display: block !important;
-          position: static !important;
-          width: 100% !important;
-          margin: 0 !important;
-          padding: 16px !important;
-          box-shadow: none !important;
-          background: #fff !important;
-          color: #111 !important;
+    _getLogoDataUrl(function(logoDataUrl) {
+      var logoSrc = logoDataUrl || (_baseUrl + 'logo_gn.jpg');
+
+      // Replace logo_gn.png / logo_gn.jpg references with absolute/data URL
+      var bodyHtml = printHtml
+        .replace(/src="logo_gn\.(png|jpg)"/g, 'src="' + logoSrc + '"')
+        .replace(/src='logo_gn\.(png|jpg)'/g, "src='" + logoSrc + "'");
+
+      var fullHtml = '<!DOCTYPE html>\n' +
+'<html lang="ar" dir="rtl">\n' +
+'<head>\n' +
+'<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+'<title>' + (refNum) + '</title>\n' +
+'<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+'<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">\n' +
+'<style>\n' +
+'  *{box-sizing:border-box;margin:0;padding:0}\n' +
+'  html,body{background:#fff;color:#111;font-family:\'Cairo\',\'Tahoma\',sans-serif;direction:rtl}\n' +
+'  body{padding:0}\n' +
+'\n' +
+'  /* ── On-screen: show print button + document ── */\n' +
+'  #print-btn-bar{\n' +
+'    position:fixed;top:0;left:0;right:0;z-index:999;\n' +
+'    background:#1a2332;color:#fff;\n' +
+'    display:flex;align-items:center;justify-content:space-between;\n' +
+'    padding:10px 16px;gap:10px;flex-wrap:wrap;\n' +
+'    font-size:14px;\n' +
+'  }\n' +
+'  #print-btn-bar .btn-print{\n' +
+'    background:#2d9cdb;color:#fff;border:none;border-radius:6px;\n' +
+'    padding:8px 20px;font-size:14px;font-family:inherit;\n' +
+'    cursor:pointer;display:flex;align-items:center;gap:6px;\n' +
+'  }\n' +
+'  #print-btn-bar .btn-print:hover{background:#1a7bbf}\n' +
+'  #print-btn-bar .btn-close{\n' +
+'    background:transparent;color:#aaa;border:1px solid #aaa;\n' +
+'    border-radius:6px;padding:6px 14px;font-size:13px;font-family:inherit;\n' +
+'    cursor:pointer;\n' +
+'  }\n' +
+'  #print-btn-bar .btn-close:hover{color:#fff;border-color:#fff}\n' +
+'  #mobile-hint{\n' +
+'    font-size:11px;color:#ccc;width:100%;text-align:center;\n' +
+'    display:none;\n' +
+'  }\n' +
+'  @media(max-width:600px){\n' +
+'    #mobile-hint{display:block}\n' +
+'  }\n' +
+'\n' +
+'  /* ── Document wrapper ── */\n' +
+'  #doc-wrap{\n' +
+'    margin:70px auto 30px;\n' +
+'    max-width:800px;\n' +
+'    padding:20px;\n' +
+'    background:#fff;\n' +
+'    box-shadow:0 0 20px rgba(0,0,0,.12);\n' +
+'  }\n' +
+'  @media(max-width:600px){\n' +
+'    #doc-wrap{margin:80px 0 20px;padding:12px;box-shadow:none}\n' +
+'  }\n' +
+'\n' +
+'  /* ── Print: hide toolbar, full page ── */\n' +
+'  @media print{\n' +
+'    #print-btn-bar{display:none!important}\n' +
+'    #doc-wrap{\n' +
+'      margin:0!important;padding:0!important;\n' +
+'      max-width:100%!important;\n' +
+'      box-shadow:none!important;\n' +
+'    }\n' +
+'    @page{size:A4 portrait;margin:10mm 12mm}\n' +
+'    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}\n' +
+'  }\n' +
+'\n' +
+'  /* ── Shared document styles ── */\n' +
+'  .print-header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:14px}\n' +
+'  .print-logo{width:70px;height:70px;object-fit:contain;display:block}\n' +
+'  .print-titles{text-align:center;flex:1;padding:0 8px}\n' +
+'  .print-titles p{font-size:12px;line-height:1.5}\n' +
+'  .print-titles h2{font-size:15px;font-weight:700;margin-top:4px}\n' +
+'  .print-ref{border:2px solid #000;border-radius:6px;padding:8px 14px;text-align:center;margin-bottom:14px}\n' +
+'  .print-ref .label{font-size:11px;color:#555}\n' +
+'  .print-ref .num{font-size:20px;font-weight:700;letter-spacing:1px}\n' +
+'  .print-section{margin-bottom:14px}\n' +
+'  .print-section h3{font-size:13px;font-weight:700;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:8px;color:#111}\n' +
+'  .print-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}\n' +
+'  @media(max-width:500px){.print-grid{grid-template-columns:1fr}}\n' +
+'  .print-field{background:#f9f9f9;border:1px solid #ddd;border-radius:4px;padding:5px 8px}\n' +
+'  .pf-label{font-size:10px;color:#555;margin-bottom:2px}\n' +
+'  .pf-val{font-size:12px;font-weight:600}\n' +
+'  .print-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ccc;padding-top:12px;margin-top:14px;page-break-inside:avoid;break-inside:avoid}\n' +
+'  .sig{text-align:center;display:flex;flex-direction:column;align-items:center;min-width:100px}\n' +
+'  .sig-label{font-size:13px;font-weight:700;margin-bottom:8px}\n' +
+'  .sig-empty{width:100px;height:55px;border-bottom:1px solid #aaa}\n' +
+'  .sig-right{align-items:flex-start}\n' +
+'  .sig-left{align-items:flex-end}\n' +
+'  .sig-qr-center{display:flex;flex-direction:column;align-items:center;justify-content:center}\n' +
+'  .no-print{display:none!important}\n' +
+'</style>\n' +
+'</head>\n' +
+'<body>\n' +
+'\n' +
+'<div id="print-btn-bar">\n' +
+'  <span style="font-weight:600">📄 ' + (refNum) + '</span>\n' +
+'  <div style="display:flex;gap:8px;align-items:center">\n' +
+'    <button class="btn-print" onclick="triggerPrint()">\n' +
+'      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>\n' +
+'      طباعة / حفظ PDF\n' +
+'    </button>\n' +
+'    <button class="btn-close" onclick="window.close()">✕ إغلاق</button>\n' +
+'  </div>\n' +
+'  <div id="mobile-hint">📱 اضغط «طباعة» ثم اختر «حفظ كـ PDF» من القائمة</div>\n' +
+'</div>\n' +
+'\n' +
+'<div id="doc-wrap">\n' +
+  bodyHtml + '\n' +
+'</div>\n' +
+'\n' +
+'<script>\n' +
+'  function triggerPrint(){\n' +
+'    var ua = navigator.userAgent.toLowerCase();\n' +
+'    var isIOS = /iphone|ipad|ipod/.test(ua);\n' +
+'    if(isIOS){\n' +
+'      // iOS: direct print dialog\n' +
+'      window.print();\n' +
+'    } else {\n' +
+'      window.print();\n' +
+'    }\n' +
+'  }\n' +
+'  // Auto-trigger print dialog after fonts load (desktop)\n' +
+'  var ua = navigator.userAgent.toLowerCase();\n' +
+'  var isMobile = /android|iphone|ipad|ipod|mobile/.test(ua);\n' +
+'  if(!isMobile){\n' +
+'    if(document.fonts && document.fonts.ready){\n' +
+'      document.fonts.ready.then(function(){ setTimeout(triggerPrint, 400); });\n' +
+'    } else {\n' +
+'      setTimeout(triggerPrint, 800);\n' +
+'    }\n' +
+'  }\n' +
+'<\/script>\n' +
+'</body></html>';
+
+      // Try opening a popup; fall back to new tab if blocked
+      var printWin = null;
+      try {
+        printWin = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+      } catch(e) {}
+
+      if (printWin && !printWin.closed) {
+        printWin.document.open();
+        printWin.document.write(fullHtml);
+        printWin.document.close();
+      } else {
+        // Popup was blocked — use Blob URL as fallback
+        try {
+          var blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+          var url  = URL.createObjectURL(blob);
+          var a    = document.createElement('a');
+          a.href   = url;
+          a.target = '_blank';
+          a.rel    = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 5000);
+        } catch(e2) {
+          // Last resort: inject print styles and print current page
+          var styleId = '__gn_print_style__';
+          var st = document.getElementById(styleId);
+          if (!st) { st = document.createElement('style'); st.id = styleId; document.head.appendChild(st); }
+          st.textContent = '@media print{body>*:not(#print-area){display:none!important}#print-area{display:block!important;position:static!important;width:100%!important;margin:0!important;padding:16px!important}@page{size:A4 portrait;margin:10mm 12mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}';
+          var _cl = function(){ var s=document.getElementById(styleId);if(s)s.remove(); printArea.style.display='none'; document.title=prevTitle; };
+          window.addEventListener('afterprint', _cl, {once:true});
+          setTimeout(_cl, 60000);
+          setTimeout(function(){ window.print(); }, 350);
+          return;
         }
-        @page { size: A4 portrait; margin: 10mm 12mm; }
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       }
-    `;
 
-    const _cleanup = function() {
-      const s = document.getElementById(styleId);
-      if (s) s.remove();
-      printArea.style.display = 'none';
-      document.title = prevTitle;
-    };
-
-    window.addEventListener('afterprint', _cleanup, { once: true });
-    // Safety fallback if afterprint never fires (some old browsers)
-    const _safeguard = setTimeout(_cleanup, 60000);
-    window.addEventListener('afterprint', function() { clearTimeout(_safeguard); }, { once: true });
-
-    // Show hint for mobile users
-    const hint = document.getElementById('android-print-hint');
-    if (hint) {
-      hint.textContent = '📄 اختر «حفظ كـ PDF» أو «طباعة» من قائمة الطباعة';
-      hint.style.display = 'block';
-    }
-
-    // Small delay to ensure print-area is rendered before dialog opens
-    setTimeout(function() { window.print(); }, 350);
+      // Reset the in-page print-area after opening the new window
+      setTimeout(function(){
+        printArea.style.display = 'none';
+        document.title = prevTitle;
+      }, 1000);
+    });
   }
 
   // Wait for QR canvas→img conversion (300ms) then build
