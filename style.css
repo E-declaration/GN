@@ -519,7 +519,11 @@
 
     @media print {
       * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
-      body > *:not(#print-area) { display: none !important; }
+      body > *:not(#print-area),
+      header, .app-header, nav, footer, .app-footer,
+      .step-nav, .step-content,
+      #step-1, #step-2, #step-3, #step-success,
+      #submit-error-toast { display: none !important; }
       #print-area {
         display: block !important;
         position: static !important;
