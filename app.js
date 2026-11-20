@@ -815,29 +815,42 @@ function printDeclaration(isPdf) {
   const isAndroid = /android/i.test(navigator.userAgent);
 
   if (isAndroid) {
-    // On Android Chrome (especially GitHub Pages), blob URL downloads are blocked.
-    // Use a data: URI which is allowed without popup permissions.
+    // Android Chrome blocks data: URI downloads (silent no-op since Chrome 65).
+    // Best approach: open blob URL in a new tab so the user can use the browser's
+    // share/print menu. Falls back to navigator.share (file) then same-tab redirect.
+    const hint = document.getElementById('android-print-hint');
+    let opened = false;
+
+    // 1) Try new tab with blob URL (works when popups are allowed)
     try {
-      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(printHtml);
-      const a = document.createElement('a');
-      a.href = dataUri;
-      a.download = refNum + '.html';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { document.body.removeChild(a); }, 500);
-    } catch(e) {
-      // Last resort: open blob in same tab
-      window.location.href = blobUrl;
+      const win = window.open(blobUrl, '_blank');
+      if (win) { opened = true; }
+    } catch(e) {}
+
+    // 2) Try navigator.share with the file (Android Chrome 76+)
+    if (!opened && navigator.canShare) {
+      try {
+        const file = new File([blob], refNum + '.html', { type: 'text/html' });
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: refNum });
+          opened = true;
+        }
+      } catch(e) {}
     }
+
+    // 3) Fallback: redirect current tab to blob (user presses back to return)
+    if (!opened) {
+      window.location.href = blobUrl;
+      opened = true;
+    }
+
+    if (hint) hint.style.display = 'block';
     setTimeout(() => {
       printArea.style.display = 'none';
       document.title = prevTitle;
-      URL.revokeObjectURL(blobUrl);
-    }, 2000);
-    // Show hint instead of alert
-    const hint = document.getElementById('android-print-hint');
-    if (hint) hint.style.display = 'block';
+      // Don't revoke immediately — new tab needs time to load the blob
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    }, 500);
   } else {
     // Desktop / iOS: open in new tab
     const win = window.open(blobUrl, '_blank');
