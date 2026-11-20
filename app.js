@@ -712,61 +712,83 @@ function printDeclaration(isPdf) {
 
   const printArea = document.getElementById('print-area');
   const prevTitle = document.title;
-  // Show print area so it can be rendered / captured
+  // Populate print area
   printArea.style.display = 'block';
   if(isPdf) {
     return;
   }
 
-  // Detect mobile browsers — window.print() is ignored on Android/iOS Chrome
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const refNum = submittedData.reference || 'تصريح-GN';
+  document.title = refNum;
 
-  if(isMobile && typeof html2canvas !== 'undefined' && typeof window.jspdf !== 'undefined') {
-    // Mobile path: generate PDF via html2canvas + jsPDF
-    const refNum = submittedData.reference || 'تصريح-GN';
-    document.title = refNum;
+  // Build a standalone HTML page from the populated print-area content.
+  // This works on ALL platforms including Android Chrome where window.print() is silently ignored.
+  const printStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Cairo', sans-serif; direction: rtl; background: #fff; color: #111; }
+    #print-area { display: block !important; padding: 16px; }
+    .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
+    .print-header img { border-radius: 50%; width: 65px; height: 65px; object-fit: contain; }
+    .print-titles { text-align: center; flex: 1; }
+    .print-titles p { font-size: 13px; }
+    .print-titles h2 { font-size: 15px; font-weight: 700; margin-top: 4px; }
+    .print-ref { border: 2px solid #000; border-radius: 6px; padding: 8px 14px; text-align: center; margin-bottom: 14px; }
+    .print-ref .ref-label { font-size: 12px; color: #555; }
+    .print-ref .ref-num { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+    .print-section { margin-bottom: 14px; }
+    .print-section h3 { font-size: 13px; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 8px; color: #111; }
+    .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .print-field { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 5px 8px; }
+    .pf-label { font-size: 10px; color: #555; margin-bottom: 2px; }
+    .pf-val { font-size: 12px; font-weight: 600; }
+    .print-footer { text-align: center; font-size: 11px; color: #555; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 14px; }
+    .no-print { display: none !important; }
+    @media print {
+      @page { size: A4 portrait; margin: 10mm 12mm; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  `;
 
-    // Small delay to ensure QR renders
-    setTimeout(() => {
-      html2canvas(printArea, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        scrollX: 0,
-        scrollY: 0,
-        width: printArea.scrollWidth,
-        height: printArea.scrollHeight
-      }).then(canvas => {
-        const { jsPDF } = window.jspdf;
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdfW = 210; // A4 width mm
-        const pdfH = (canvas.height * pdfW) / canvas.width;
-        const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'mm', format: 'a4' });
-        const pageH = pdf.internal.pageSize.getHeight();
-        let yOffset = 0;
-        while(yOffset < pdfH) {
-          if(yOffset > 0) pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, -yOffset, pdfW, pdfH);
-          yOffset += pageH;
-        }
-        pdf.save(refNum + '.pdf');
-        printArea.style.display = 'none';
-        document.title = prevTitle;
-      }).catch(() => {
-        // Fallback to window.print if html2canvas fails
-        window.print();
-        setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
-      });
-    }, 300);
-  } else {
-    // Desktop path: use browser print dialog
-    document.title = submittedData.reference || 'تصريح-GN';
+  const printHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${refNum}</title>
+  <style>${printStyles}</style>
+</head>
+<body>
+  <div id="print-area">
+    ${printArea.innerHTML}
+  </div>
+  <script>
+    // Auto-trigger print dialog when page opens (works on desktop & most mobile)
+    window.addEventListener('load', function() {
+      setTimeout(function() { window.print(); }, 600);
+    });
+  <\/script>
+</body>
+</html>`;
+
+  // Open in a new tab — works universally, including Android Chrome
+  const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  const win = window.open(blobUrl, '_blank');
+
+  // Cleanup
+  setTimeout(() => {
+    printArea.style.display = 'none';
+    document.title = prevTitle;
+    // Revoke after a delay to allow the new tab to fully load
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+  }, 500);
+
+  if(!win) {
+    // Pop-up blocked — fallback: direct window.print() on current page
+    printArea.style.display = 'block';
     window.print();
-    setTimeout(() => {
-      printArea.style.display = 'none';
-      document.title = prevTitle;
-    }, 1500);
+    setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
   }
 }
 window.printDeclaration=printDeclaration;
