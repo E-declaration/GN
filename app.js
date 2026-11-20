@@ -904,82 +904,63 @@ function printDeclaration(isPdf) {
     }
   })();
 
-  // Build and trigger print/download — called after QR canvas→img conversion
+  // Build and trigger print — works on ALL browsers/devices by printing directly
+  // in the current page (no Blob URL, no popup window, no new tab required).
+  // Blob/popup approaches fail on GitHub Pages due to CSP and popup blockers.
   function _buildAndWrite() {
-    // Replace relative logo paths with absolute URLs so they load in the new window / blob
-    const _printBody = printArea.innerHTML
-      .replace(/(src=["'])logo_gn\.(png|jpg)(["'])/g, `$1${_baseUrl}logo_gn.png$3`)
-      .replace(/(src=["'])1055_ar\.jpg(["'])/g, `$1${_baseUrl}1055_ar.jpg$2`);
-
-    const printHtml = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escHtml(refNum)}</title>
-  <style>${printStyles}
-    #mobile-print-btn{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-      background:#27ae60;color:#fff;border:none;border-radius:10px;padding:14px 32px;
-      font-size:16px;font-family:'Cairo',sans-serif;cursor:pointer;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
-    @media(max-width:768px){#mobile-print-btn{display:block;}}
-  </style>
-</head>
-<body>
-  <button id="mobile-print-btn" onclick="window.print()">🖨️ طباعة / تنزيل</button>
-  <div id="print-area">
-    ${_printBody}
-  </div>
-  <script>
-    // Auto-print after fonts & images load (desktop)
-    var _isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-    if(!_isMobile){
-      window.addEventListener('load', function() {
-        setTimeout(function(){ window.print(); }, 800);
-      });
-      setTimeout(function(){ window.print(); }, 2500);
-    }
-  <\/script>
-</body>
-</html>`;
-
-    // Always use Blob approach — most reliable on Android Chrome / GitHub Pages
-    // window.open() popup is unreliable; Blob download works without popup permission
-    try {
-      const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      // On mobile: download as file (reliable); on desktop: open in new tab
-      if (/android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
-        a.download = refNum + '.html';
-      }
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
-    } catch(_e) {
-      // Last resort: try window.open
-      try {
-        const pw = window.open('', '_blank');
-        if(pw) { pw.document.open(); pw.document.write(printHtml); pw.document.close(); }
-        else { alert('تعذّر فتح نافذة الطباعة. يُرجى السماح للنوافذ المنبثقة في المتصفح والمحاولة مجدداً.'); }
-      } catch(__) {
-        alert('تعذّر فتح نافذة الطباعة. يُرجى السماح للنوافذ المنبثقة في المتصفح والمحاولة مجدداً.');
-      }
+    const styleId = '__gn_print_style__';
+    let st = document.getElementById(styleId);
+    if (!st) {
+      st = document.createElement('style');
+      st.id = styleId;
+      document.head.appendChild(st);
     }
 
-    // Show hint on mobile (Android/iOS)
+    // Hide everything except #print-area during printing
+    st.textContent = `
+      @media print {
+        body > *:not(#print-area),
+        header, footer, nav,
+        .app-header, .step-nav, .app-footer,
+        #step-1, #step-2, #step-3, #step-success,
+        #submit-error-toast,
+        #android-print-hint { display: none !important; }
+        #print-area {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 16px !important;
+          box-shadow: none !important;
+          background: #fff !important;
+          color: #111 !important;
+        }
+        @page { size: A4 portrait; margin: 10mm 12mm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      }
+    `;
+
+    const _cleanup = function() {
+      const s = document.getElementById(styleId);
+      if (s) s.remove();
+      printArea.style.display = 'none';
+      document.title = prevTitle;
+    };
+
+    window.addEventListener('afterprint', _cleanup, { once: true });
+    // Safety fallback if afterprint never fires (some old browsers)
+    const _safeguard = setTimeout(_cleanup, 60000);
+    window.addEventListener('afterprint', function() { clearTimeout(_safeguard); }, { once: true });
+
+    // Show hint for mobile users
     const hint = document.getElementById('android-print-hint');
-    if (hint && /android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
+    if (hint) {
+      hint.textContent = '📄 اختر «حفظ كـ PDF» أو «طباعة» من قائمة الطباعة';
       hint.style.display = 'block';
     }
 
-    setTimeout(() => {
-      printArea.style.display = 'none';
-      document.title = prevTitle;
-    }, 500);
+    // Small delay to ensure print-area is rendered before dialog opens
+    setTimeout(function() { window.print(); }, 350);
   }
 
   // Wait for QR canvas→img conversion (300ms) then build
