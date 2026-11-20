@@ -107,7 +107,6 @@
       height: 90px;
       object-fit: contain;
       border-radius: 50%;
-      mix-blend-mode: screen;
     }
     .banner-text-col {
       flex: 1;
@@ -527,7 +526,7 @@
       padding-bottom: 8px;
       margin-bottom: 10px;
     }
-    .print-header img { width: 65px; height: 65px; object-fit: contain; }
+    .print-logo { width: 75px; height: 75px; object-fit: contain; display: block; }
     .print-header .print-titles { text-align: center; flex: 1; }
     .print-header .print-titles p { font-size: 11px; line-height: 1.4; margin: 1px 0; }
     .print-header .print-titles h2 { font-size: 15px; font-weight: 900; margin: 4px 0; }
@@ -566,9 +565,12 @@
       border-top: 1px solid #ccc;
       padding-top: 12px;
     }
-    .print-footer .sig { text-align: center; }
-    .print-footer .sig p { font-size: 12px; }
-    .print-footer .sig .sig-box { width: 150px; height: 60px; border-bottom: 1px solid #000; margin-top: 20px; }
+    .print-footer .sig { text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 130px; }
+    .print-footer .sig .sig-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .print-footer .sig .sig-empty { width: 130px; height: 80px; }
+    .print-footer .sig-right { align-items: flex-start; }
+    .print-footer .sig-left  { align-items: flex-end; }
+    .print-footer .sig-qr-center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
     /* ===== SPINNER ===== */
     .spinner-overlay {
       position: fixed; inset: 0;
