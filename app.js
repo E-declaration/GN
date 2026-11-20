@@ -156,6 +156,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load theme — default is light
   const savedTheme = localStorage.getItem('theme');
   setTheme(savedTheme ? savedTheme : 'light');
+
+  // Restore submitted data from sessionStorage (survives refresh on success page)
+  try {
+    const savedSubmitted = sessionStorage.getItem('gn_submitted_data');
+    if(savedSubmitted) {
+      const parsed = JSON.parse(savedSubmitted);
+      if(parsed && parsed.reference) {
+        submittedData = parsed;
+        // Show success screen and restore ref number
+        document.getElementById('step-1').style.display = 'none';
+        document.getElementById('step-success').style.display = 'block';
+        document.getElementById('ref-display').textContent = parsed.reference;
+        // Mark all steps completed
+        for(let i=1;i<=3;i++) {
+          const nav = document.getElementById(`step-nav-${i}`);
+          if(nav) { nav.classList.add('completed'); nav.classList.remove('active'); }
+        }
+        currentStep = 4; // past all steps
+        // Show android hint if needed
+        if(/android/i.test(navigator.userAgent)) {
+          const hint = document.getElementById('android-print-hint');
+          if(hint) hint.style.display = 'block';
+        }
+        // Don't restore form draft or set up auto-save for the success screen
+        return;
+      }
+    }
+  } catch(_) {}
+
   // Restore any saved draft (persists across reloads / network drops)
   restoreFormDraft();
   // Auto-save draft on every field change
@@ -289,6 +318,18 @@ function validateStep1() {
       if(!eVal) ok = false;
     }
   }
+  // Validate gender
+  const genderField = document.getElementById('gender-field');
+  const userTypeForGender = document.getElementById('userType').value;
+  if(userTypeForGender !== 'entity') {
+    const selGender = getSelectedGender();
+    if(!selGender) {
+      const errEl = document.getElementById('gender-err');
+      if(errEl) errEl.style.display = 'block';
+      ok = false;
+    }
+  }
+
   // For legal entities (entity), skip personal fields (name, birth date, birth place)
   if(userType !== 'entity') {
     const birthApprox = document.getElementById('birthDateApprox')?.checked;
@@ -421,6 +462,32 @@ function onUserTypeChange() {
   const birthPlaceField = document.getElementById('birthPlace')?.closest('.field');
   if(birthPlaceField) birthPlaceField.style.display = isEntity?'none':'';
 
+  // For entity: auto-select "آخر" gender and hide male/female options
+  const genderField = document.getElementById('gender-field');
+  if(genderField) {
+    if(isEntity) {
+      // Auto-check "آخر" and hide the field
+      genderField.style.display = 'none';
+      onGenderChange('other');
+      const otherCb = document.getElementById('gender-other');
+      if(otherCb) otherCb.checked = true;
+      document.getElementById('gender-other-opt')?.classList.add('selected');
+    } else {
+      genderField.style.display = '';
+      // Clear entity-auto-selection if switching away from entity
+      const otherCb = document.getElementById('gender-other');
+      if(otherCb && otherCb.checked) {
+        // Only clear if no manual gender was chosen
+        const maleCb = document.getElementById('gender-male');
+        const femaleCb = document.getElementById('gender-female');
+        if(!maleCb?.checked && !femaleCb?.checked) {
+          otherCb.checked = false;
+          document.getElementById('gender-other-opt')?.classList.remove('selected');
+        }
+      }
+    }
+  }
+
   // Update passport/residence field label based on type
   const passportLabel = document.querySelector('#passport-field label');
   if(passportLabel) {
@@ -432,6 +499,38 @@ function onUserTypeChange() {
     if(t === 'resident') passportInput.placeholder = 'رقم بطاقة الإقامة';
     else if(t === 'tourist') passportInput.placeholder = 'رقم جواز السفر';
   }
+}
+
+// ===== GENDER SELECTION (checkbox-style like oath) =====
+function onGenderChange(selected) {
+  // Uncheck all first (single-select behaviour)
+  ['male','female','other'].forEach(v => {
+    const cb = document.getElementById(`gender-${v}`);
+    const opt = document.getElementById(`gender-${v}-opt`);
+    if(!cb || !opt) return;
+    if(v === selected) {
+      cb.checked = true;
+      opt.classList.add('selected');
+    } else {
+      cb.checked = false;
+      opt.classList.remove('selected');
+    }
+  });
+  // Hide error
+  const errEl = document.getElementById('gender-err');
+  if(errEl) errEl.style.display = 'none';
+}
+window.onGenderChange = onGenderChange;
+
+function getSelectedGender() {
+  if(document.getElementById('gender-male')?.checked) return 'male';
+  if(document.getElementById('gender-female')?.checked) return 'female';
+  if(document.getElementById('gender-other')?.checked) return 'other';
+  return '';
+}
+
+function getGenderLabel(v) {
+  return {male:'ذكر', female:'أنثى', other:'آخر (شخص معنوي)'}[v] || v;
 }
 function onReporterNatureChange() { /* could show extra fields */ }
 window.onUserTypeChange=onUserTypeChange; window.onReporterNatureChange=onReporterNatureChange;
@@ -462,6 +561,7 @@ async function submitDeclaration() {
     reporter: {
       nature: document.querySelector('[name="reporterNature"]:checked')?.value||'self',
       userType: document.getElementById('userType').value,
+      gender: getSelectedGender(),
       nin: document.getElementById('nin').value,
       passportNum: document.getElementById('passportNum').value,
       entityName: document.getElementById('entityName').value,
@@ -508,6 +608,8 @@ async function submitDeclaration() {
     }); // fire-and-forget, never blocks user flow
 
     submittedData = data;
+    // Save submitted data to sessionStorage so printDeclaration works after page refresh
+    try { sessionStorage.setItem('gn_submitted_data', JSON.stringify(data)); } catch(_) {}
     clearFormDraft();
     showSpinner(false);
     document.getElementById(`step-${currentStep}`).style.display='none';
@@ -657,6 +759,15 @@ function printDeclaration(isPdf) {
     <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${escHtml(r.phone)}</div></div>
     <div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">${escHtml(r.email)||'—'}</div></div>
   `;
+  // Show gender in print area
+  const printGenderRow = document.getElementById('print-gender-row');
+  const printGenderVal = document.getElementById('print-gender-val');
+  if(r.gender && printGenderRow && printGenderVal) {
+    printGenderRow.style.display = 'block';
+    printGenderVal.textContent = getGenderLabel(r.gender);
+  } else if(printGenderRow) {
+    printGenderRow.style.display = 'none';
+  }
 
   let docsHtml = '';
   d.documents.forEach((doc, i) => {
@@ -747,8 +858,6 @@ function printDeclaration(isPdf) {
   const refNum = submittedData.reference || 'تصريح-GN';
   document.title = refNum;
 
-  // Build a standalone HTML page from the populated print-area content.
-  // This works on ALL platforms including Android Chrome where window.print() is silently ignored.
   const printStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -782,16 +891,35 @@ function printDeclaration(isPdf) {
     }
   `;
 
-  // Build absolute base URL so images resolve correctly inside the blob
-  const _baseUrl = window.location.href.replace(/\/[^\/]*(\?.*)?$/, '/');
-  const _printBody = printArea.innerHTML.replace(/(src=["'])logo_gn\.(png|jpg)(["'])/g, `$1${_baseUrl}logo_gn.png$3`);
+  // Determine absolute base URL for assets (logo, etc.)
+  const _baseUrl = (function() {
+    try {
+      // Works on any HTTP/HTTPS origin
+      const u = new URL(window.location.href);
+      return u.origin + u.pathname.replace(/\/[^/]*$/, '/');
+    } catch(_) {
+      return window.location.href.replace(/\/[^\/]*(\?.*)?$/, '/');
+    }
+  })();
 
-  const printHtml = `<!DOCTYPE html>
+  // KEY FIX: open the window immediately while we're still inside the user gesture.
+  // Any setTimeout (even 0ms) breaks the gesture chain on Android Chrome and causes
+  // window.open to be silently blocked as a popup. We open a blank window now,
+  // then write the content into it once the QR canvas->img conversion finishes.
+  const printWin = window.open('', '_blank');
+
+  function _buildAndWrite() {
+    // Replace relative logo paths with absolute URLs so they load in the new window / blob
+    const _printBody = printArea.innerHTML
+      .replace(/(src=["'])logo_gn\.(png|jpg)(["'])/g, `$1${_baseUrl}logo_gn.png$3`)
+      .replace(/(src=["'])1055_ar\.jpg(["'])/g, `$1${_baseUrl}1055_ar.jpg$2`);
+
+    const printHtml = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${refNum}</title>
+  <title>${escHtml(refNum)}</title>
   <style>${printStyles}</style>
 </head>
 <body>
@@ -799,73 +927,56 @@ function printDeclaration(isPdf) {
     ${_printBody}
   </div>
   <script>
-    // Auto-trigger print dialog when page opens (works on desktop & most mobile)
+    // Auto-print after fonts & images load
     window.addEventListener('load', function() {
-      setTimeout(function() { window.print(); }, 600);
+      setTimeout(function() {
+        window.print();
+      }, 800);
     });
+    // Fallback: print after 2.5s regardless
+    setTimeout(function() { window.print(); }, 2500);
   <\/script>
 </body>
 </html>`;
 
-  // Strategy: try iframe print first (works on desktop), then fallback to download (works on Android Chrome)
-  const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
-  const blobUrl = URL.createObjectURL(blob);
-
-  // Detect Android
-  const isAndroid = /android/i.test(navigator.userAgent);
-
-  if (isAndroid) {
-    // Android Chrome blocks data: URI downloads (silent no-op since Chrome 65).
-    // Best approach: open blob URL in a new tab so the user can use the browser's
-    // share/print menu. Falls back to navigator.share (file) then same-tab redirect.
-    const hint = document.getElementById('android-print-hint');
-    let opened = false;
-
-    // 1) Try new tab with blob URL (works when popups are allowed)
-    try {
-      const win = window.open(blobUrl, '_blank');
-      if (win) { opened = true; }
-    } catch(e) {}
-
-    // 2) Try navigator.share with the file (Android Chrome 76+)
-    if (!opened && navigator.canShare) {
+    if (printWin && !printWin.closed) {
+      // Write content into the already-open window
+      printWin.document.open();
+      printWin.document.write(printHtml);
+      printWin.document.close();
+    } else {
+      // Window was blocked (popup blocker) — fall back to Blob download/navigate
       try {
-        const file = new File([blob], refNum + '.html', { type: 'text/html' });
-        if (navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file], title: refNum });
-          opened = true;
-        }
-      } catch(e) {}
+        const blob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        // Try opening in a new tab via anchor click (more reliable on mobile)
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.target = '_blank';
+        a.download = refNum + '.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch(_e) {
+        alert('تعذّر فتح نافذة الطباعة. يُرجى السماح للنوافذ المنبثقة في المتصفح والمحاولة مجدداً.');
+      }
     }
 
-    // 3) Fallback: redirect current tab to blob (user presses back to return)
-    if (!opened) {
-      window.location.href = blobUrl;
-      opened = true;
+    // Show hint on mobile (Android/iOS)
+    const hint = document.getElementById('android-print-hint');
+    if (hint && /android|iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      hint.style.display = 'block';
     }
 
-    if (hint) hint.style.display = 'block';
     setTimeout(() => {
       printArea.style.display = 'none';
       document.title = prevTitle;
-      // Don't revoke immediately — new tab needs time to load the blob
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
     }, 500);
-  } else {
-    // Desktop / iOS: open in new tab
-    const win = window.open(blobUrl, '_blank');
-    setTimeout(() => {
-      printArea.style.display = 'none';
-      document.title = prevTitle;
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-    }, 500);
-    if (!win) {
-      // Popup blocked fallback
-      printArea.style.display = 'block';
-      window.print();
-      setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
-    }
   }
+
+  // Wait for QR canvas→img conversion (300ms) then write content
+  setTimeout(_buildAndWrite, 350);
 }
 window.printDeclaration=printDeclaration;
 
@@ -873,7 +984,11 @@ function getUserTypeLabel(t) {
   return {citizen:'مواطن جزائري',resident:'مقيم أجنبي',entity:'شخص معنوي',tourist:'سائح أجنبي'}[t]||t;
 }
 
-function newDeclaration() { clearFormDraft(); location.reload(); }
+function newDeclaration() {
+  clearFormDraft();
+  try { sessionStorage.removeItem('gn_submitted_data'); } catch(_) {}
+  location.reload();
+}
 window.newDeclaration=newDeclaration;
 
 // ===== LOCAL STORAGE DRAFT (persist form data across reloads / network drops) =====
@@ -903,6 +1018,8 @@ function saveFormDraft() {
     if(ba) draft.birthDateApprox = ba.checked;
     const oa = document.getElementById('oath');
     if(oa) draft.oath = oa.checked;
+    // Gender
+    draft.gender = getSelectedGender();
     // Docs
     const docs = [];
     for(let i = 1; i <= docCount; i++) {
@@ -983,6 +1100,10 @@ function restoreFormDraft() {
       const el = document.getElementById('oath');
       if(el) el.checked = true;
     }
+    // Gender
+    if(draft.gender) {
+      onGenderChange(draft.gender);
+    }
     // Docs
     if(draft.docs && draft.docs.length > 0) {
       const docList = document.getElementById('doc-list');
@@ -1027,6 +1148,7 @@ function previewDeclaration() {
     reporter: {
       nature:          document.querySelector('[name="reporterNature"]:checked')?.value || 'self',
       userType:        document.getElementById('userType').value,
+      gender:          getSelectedGender(),
       nin:             document.getElementById('nin').value,
       passportNum:     document.getElementById('passportNum').value,
       entityName:      document.getElementById('entityName').value,
