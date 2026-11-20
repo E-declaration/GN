@@ -415,6 +415,9 @@ function onUserTypeChange() {
   // Hide birth date and birth place fields for legal entities
   const birthDateField = document.getElementById('birthDate')?.closest('.field');
   if(birthDateField) birthDateField.style.display = isEntity?'none':'';
+  // Hide father/mother name fields for legal entities
+  document.getElementById('fatherName-field').style.display = isEntity?'none':'';
+  document.getElementById('motherName-field').style.display = isEntity?'none':'';
   const birthPlaceField = document.getElementById('birthPlace')?.closest('.field');
   if(birthPlaceField) birthPlaceField.style.display = isEntity?'none':'';
 
@@ -466,6 +469,8 @@ async function submitDeclaration() {
       firstName: document.getElementById('firstName').value,
       lastNameLat: document.getElementById('lastNameLat').value,
       firstNameLat: document.getElementById('firstNameLat').value,
+      fatherName: document.getElementById('fatherName').value,
+      motherName: document.getElementById('motherName').value,
       birthDate: document.getElementById('birthDateApprox')?.checked ? (document.getElementById('birthYear').value + ' (مفترض)') : document.getElementById('birthDate').value,
       birthPlace: document.getElementById('birthPlace').value,
       wilayaResidence: document.getElementById('wilayaResidence').value,
@@ -646,6 +651,7 @@ function printDeclaration(isPdf) {
     <div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">${escHtml(r.nin||r.passportNum||r.entityName)}</div></div>
     <div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">${escHtml(r.lastName)} ${escHtml(r.firstName)}</div></div>
     <div class="print-field"><div class="pf-label">الاسم بالحروف اللاتينية</div><div class="pf-val">${escHtml(r.lastNameLat)} ${escHtml(r.firstNameLat)}</div></div>
+    ${(r.fatherName||r.motherName)?`<div class="print-field"><div class="pf-label">اسم ولقب الأب</div><div class="pf-val">${escHtml(r.fatherName)||'—'}</div></div><div class="print-field"><div class="pf-label">اسم ولقب الأم</div><div class="pf-val">${escHtml(r.motherName)||'—'}</div></div>`:''}
     <div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">${escHtml(r.birthDate)} &mdash; ${escHtml(r.birthPlace)}</div></div>
     <div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">${escHtml(wilaya?wilaya.name:r.wilayaResidence)} &mdash; ${escHtml(r.communeResidence)}</div></div>
     <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${escHtml(r.phone)}</div></div>
@@ -809,14 +815,21 @@ function printDeclaration(isPdf) {
   const isAndroid = /android/i.test(navigator.userAgent);
 
   if (isAndroid) {
-    // On Android Chrome, window.open() and window.print() are unreliable.
-    // Best UX: download the HTML file — user opens it and prints from browser.
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = refNum + '.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // On Android Chrome (especially GitHub Pages), blob URL downloads are blocked.
+    // Use a data: URI which is allowed without popup permissions.
+    try {
+      const dataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(printHtml);
+      const a = document.createElement('a');
+      a.href = dataUri;
+      a.download = refNum + '.html';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); }, 500);
+    } catch(e) {
+      // Last resort: open blob in same tab
+      window.location.href = blobUrl;
+    }
     setTimeout(() => {
       printArea.style.display = 'none';
       document.title = prevTitle;
@@ -857,7 +870,7 @@ function saveFormDraft() {
   try {
     const draft = { v: 1 };
     ['userType','nin','passportNum','entityName','lastName','firstName',
-     'lastNameLat','firstNameLat','birthDate','birthYear','birthPlace',
+     'lastNameLat','firstNameLat','fatherName','motherName','birthDate','birthYear','birthPlace',
      'phone','email','lossDate','lossCircumstances'].forEach(id => {
       const el = document.getElementById(id);
       if(el) draft[id] = el.value;
@@ -1008,6 +1021,8 @@ function previewDeclaration() {
       firstName:       document.getElementById('firstName').value,
       lastNameLat:     document.getElementById('lastNameLat').value,
       firstNameLat:    document.getElementById('firstNameLat').value,
+      fatherName:      document.getElementById('fatherName').value,
+      motherName:      document.getElementById('motherName').value,
       birthDate:       document.getElementById('birthDateApprox')?.checked
                          ? (document.getElementById('birthYear').value + ' (مفترض)')
                          : document.getElementById('birthDate').value,
