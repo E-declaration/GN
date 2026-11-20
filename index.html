@@ -46,7 +46,7 @@
 <div class="banner no-print">
   <div class="banner-inner">
     <div class="banner-logo-col">
-      <img src="logo_gn.jpg" alt="شعار الدرك الوطني" class="banner-logo">
+      <img src="logo_gn.png" alt="شعار الدرك الوطني" class="banner-logo">
     </div>
     <div class="banner-text-col">
       <p class="banner-p1">الجمهورية الجزائرية الديمقراطية الشعبية</p>
@@ -352,14 +352,14 @@
 <!-- Print Area -->
 <div id="print-area">
   <div class="print-header">
-    <img src="logo_gn.png" alt="GN Logo" style="border-radius:50%;width:65px;height:65px;object-fit:contain;">
+    <img src="logo_gn.png" alt="شعار الدرك الوطني" class="print-logo">
     <div class="print-titles">
       <p>الجمهورية الجزائرية الديمقراطية الشعبية</p>
       <p>وزارة الدفاع الوطني</p>
       <p><strong>قيادة الدرك الوطني</strong></p>
       <h2 id="print-title-main">محضر التصريح بضياع الوثائق</h2>
     </div>
-    <img src="logo_gn.png" alt="GN Logo" style="border-radius:50%;width:65px;height:65px;object-fit:contain;">
+    <img src="logo_gn.png" alt="شعار الدرك الوطني" class="print-logo">
   </div>
   <div class="print-ref">
     <div class="label">رقم المرجع</div>
@@ -383,21 +383,16 @@
     </div>
   </div>
   <div class="print-footer">
-    <div class="sig">
-      <p>توقيع المصرّح</p>
-      <div class="sig-box"></div>
+    <div class="sig sig-right">
+      <div class="sig-label">الامضاء</div>
+      <div class="sig-empty"></div>
     </div>
-    <div style="text-align:center;font-size:11px;color:#666">
-      <p>هذا التصريح لا يُغني عن الإشعار الرسمي</p>
-      <p style="margin-top:8px">طُبع بتاريخ: <span id="print-print-date"></span></p>
-      <div id="print-qr" style="margin-top:10px;text-align:center">
-        <div id="qr-code-container" style="display:inline-block"></div>
-        <div style="font-size:10px;color:#555;margin-top:3px">رمز QR خاص بهذا التصريح</div>
-      </div>
+    <div class="sig-qr-center" id="print-qr">
+      <div id="qr-code-container" style="display:inline-block"></div>
     </div>
-    <div class="sig">
-      <p>الدرك الدرك</p>
-      <div class="sig-box"></div>
+    <div class="sig sig-left">
+      <div class="sig-label">الختم</div>
+      <div class="sig-empty"></div>
     </div>
   </div>
 </div>
