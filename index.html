@@ -143,6 +143,28 @@
           </select>
         </div>
 
+        <div class="field" id="gender-field">
+          <label>الجنس <span class="req">*</span></label>
+          <div class="checkbox-group gender-group">
+            <label class="checkbox-opt">
+              <input type="checkbox" name="gender" id="gender-male" value="male" onchange="onGenderChange('male')">
+              <span class="material-icons checkbox-icon">male</span>
+              <span>ذكر</span>
+            </label>
+            <label class="checkbox-opt">
+              <input type="checkbox" name="gender" id="gender-female" value="female" onchange="onGenderChange('female')">
+              <span class="material-icons checkbox-icon">female</span>
+              <span>أنثى</span>
+            </label>
+            <label class="checkbox-opt" id="gender-other-opt">
+              <input type="checkbox" name="gender" id="gender-other" value="other" onchange="onGenderChange('other')">
+              <span class="material-icons checkbox-icon">domain</span>
+              <span>آخر</span>
+            </label>
+          </div>
+          <span class="err-msg" id="gender-err" style="display:none">يجب اختيار الجنس</span>
+        </div>
+
         <div class="field" id="nin-field">
           <label for="nin">رقم التعريف الوطني <span class="req">*</span></label>
           <input type="text" id="nin" maxlength="18" placeholder="18 رقم" inputmode="numeric"
@@ -383,6 +405,12 @@
   <div class="print-section">
     <h3>معلومات المصرّح</h3>
     <div class="print-grid" id="print-reporter"></div>
+    <div id="print-gender-row" style="margin-top:6px;display:none">
+      <div class="print-field" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px">
+        <span style="font-size:10px;color:#555">الجنس:</span>
+        <span id="print-gender-val" style="font-size:12px;font-weight:600"></span>
+      </div>
+    </div>
   </div>
   <div class="print-section">
     <h3 id="print-docs-label">الوثيقة / الوثائق الضائعة</h3>
