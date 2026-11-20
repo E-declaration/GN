@@ -519,29 +519,15 @@
 
     @media print {
       * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
-      /* ── Hide everything by default ── */
-      header, .top-bar, .banner, .no-print,
-      .step-nav, .stepper,
-      #step-1, #step-2, #step-3, #step-success,
-      #submit-error-toast, #print-toolbar,
-      #preview-overlay, footer { display: none !important; }
+      /* ── Hide everything ── */
+      body > * { display: none !important; }
 
-      /* ── Show main containers needed for step-print ── */
-      main, .form-card, #form-container { display: block !important; }
-      /* Remove card styling so it doesn't add a box around the printed page */
-      .form-card, #form-container {
-        box-shadow: none !important;
-        border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: transparent !important;
-      }
-
-      /* ── step-print: the new print view ── */
+      /* ── Show only #step-print (now a direct child of body) ── */
       #step-print { display: block !important; }
       #print-toolbar { display: none !important; }
+      .no-print { display: none !important; }
+
       #decl-view {
-        display: block !important;
         margin: 0 !important;
         padding: 0 !important;
         max-width: 100% !important;
@@ -555,10 +541,6 @@
         color: #111111 !important;
       }
       #decl-view .dv-label { color: #555555 !important; }
-
-      /* ── #print-area is used only for the preview modal clone, not for real printing ── */
-      #print-area { display: none !important; }
-      .no-print { display: none !important; }
       @page {
         size: A4 portrait;
         margin: 10mm 12mm;
