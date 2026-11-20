@@ -739,312 +739,215 @@ window.retrySubmit = retrySubmit;
 
 
 // ===== PRINT =====
-function printDeclaration(isPdf) {
-  if(!submittedData) return;
-  const d = submittedData;
-  document.getElementById('print-ref-num').textContent = d.reference;
-  const now = new Date();
-  document.getElementById('print-date-label').textContent = `تاريخ الإصدار: ${now.toLocaleDateString('ar-DZ')}  ${now.toLocaleTimeString('ar-DZ')}`;
-  const _ppd = document.getElementById('print-print-date');
-  if(_ppd) _ppd.textContent = now.toLocaleDateString('ar-DZ');
-
+// ===== PRINT VIEW — step-print =====
+// Fills #decl-view and switches to #step-print, then window.print()
+function showPrintStep(d) {
+  if (!d) return;
   const r = d.reporter;
-  const wilaya = WILAYAS.find(w=>w.code===r.wilayaResidence);
-  document.getElementById('print-reporter').innerHTML = `
-    <div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">${escHtml(getUserTypeLabel(r.userType))}</div></div>
-    <div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">${escHtml(r.nin||r.passportNum||r.entityName)}</div></div>
-    <div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">${escHtml(r.lastName)} ${escHtml(r.firstName)}</div></div>
-    <div class="print-field"><div class="pf-label">الاسم بالحروف اللاتينية</div><div class="pf-val">${escHtml(r.lastNameLat)} ${escHtml(r.firstNameLat)}</div></div>
-    ${(r.fatherName||r.motherName)?`<div class="print-field"><div class="pf-label">اسم ولقب الأب</div><div class="pf-val">${escHtml(r.fatherName)||'—'}</div></div><div class="print-field"><div class="pf-label">اسم ولقب الأم</div><div class="pf-val">${escHtml(r.motherName)||'—'}</div></div>`:''}
-    <div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">${escHtml(r.birthDate)} &mdash; ${escHtml(r.birthPlace)}</div></div>
-    <div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">${escHtml(wilaya?wilaya.name:r.wilayaResidence)} &mdash; ${escHtml(r.communeResidence)}</div></div>
-    <div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">${escHtml(r.phone)}</div></div>
-    <div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">${escHtml(r.email)||'—'}</div></div>
-  `;
-  // Show gender in print area
-  const printGenderRow = document.getElementById('print-gender-row');
-  const printGenderVal = document.getElementById('print-gender-val');
-  if(r.gender && printGenderRow && printGenderVal) {
-    printGenderRow.style.display = 'block';
-    printGenderVal.textContent = getGenderLabel(r.gender);
-  } else if(printGenderRow) {
-    printGenderRow.style.display = 'none';
+  const now = new Date();
+
+  // ── Ref + date ──
+  document.getElementById('dv-ref-num').textContent   = d.reference;
+  document.getElementById('print-toolbar-ref').textContent = '📄 ' + d.reference;
+  document.getElementById('dv-date-label').textContent =
+    'تاريخ الإصدار: ' + now.toLocaleDateString('ar-DZ') + '  ' + now.toLocaleTimeString('ar-DZ');
+
+  // ── Reporter fields ──
+  const wilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
+  const reporterFields = [
+    ['الفئة',                    getUserTypeLabel(r.userType)],
+    ['رقم التعريف',              r.nin || r.passportNum || r.entityName],
+    ['اللقب والاسم (عربي)',      (r.lastName  + ' ' + r.firstName).trim()],
+    ['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()],
+    r.fatherName ? ['اسم ولقب الأب', r.fatherName] : null,
+    r.motherName ? ['اسم ولقب الأم', r.motherName] : null,
+    ['تاريخ ومكان الميلاد',     r.birthDate + ' — ' + r.birthPlace],
+    ['مكان الإقامة',            (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence],
+    ['الهاتف',                  r.phone],
+    ['البريد الإلكتروني',       r.email || '—'],
+  ].filter(Boolean);
+
+  document.getElementById('dv-reporter').innerHTML = reporterFields.map(([lbl, val]) =>
+    '<div class="dv-field"><div class="dv-label">' + escHtml(lbl) + '</div>' +
+    '<div class="dv-val">'  + escHtml(val || '—') + '</div></div>'
+  ).join('');
+
+  // gender
+  const gRow = document.getElementById('dv-gender-row');
+  const gVal  = document.getElementById('dv-gender-val');
+  if (r.gender && gRow && gVal) {
+    gRow.style.display = 'block';
+    gVal.textContent = getGenderLabel(r.gender);
+  } else if (gRow) { gRow.style.display = 'none'; }
+
+  // ── Documents ──
+  let docsHtml = '';
+  d.documents.forEach(function(doc, i) {
+    docsHtml +=
+      '<div style="border:1px solid #ccc;padding:8px;margin-bottom:8px;border-radius:4px">' +
+      '<div style="font-weight:700;margin-bottom:6px">الوثيقة ' + (i+1) + ': ' + escHtml(doc.type) + '</div>' +
+      '<div class="dv-grid">' +
+      '<div class="dv-field"><div class="dv-label">رقم الوثيقة</div><div class="dv-val">'  + escHtml(doc.number)    + '</div></div>' +
+      '<div class="dv-field"><div class="dv-label">تاريخ الإصدار</div><div class="dv-val">' + (escHtml(doc.issueDate) || '—') + '</div></div>' +
+      '<div class="dv-field"><div class="dv-label">تاريخ الانتهاء</div><div class="dv-val">'+ (escHtml(doc.expDate)   || '—') + '</div></div>' +
+      '<div class="dv-field"><div class="dv-label">جهة الإصدار</div><div class="dv-val">'  + (escHtml(doc.authority) || '—') + '</div></div>' +
+      '</div></div>';
+  });
+  document.getElementById('dv-docs').innerHTML = docsHtml;
+
+  // ── Loss ──
+  const declType  = d.declarationType || 'loss';
+  const DL        = DECL_LABELS[declType] || DECL_LABELS.loss;
+  const lossWilaya = WILAYAS.find(w => w.code === d.loss.wilaya);
+  document.getElementById('dv-title-main').textContent = DL.printTitle;
+  document.getElementById('dv-docs-label').textContent = DL.printDocs;
+  document.getElementById('dv-loss-label').textContent = DL.printLoss;
+  document.getElementById('dv-loss').innerHTML =
+    '<div class="dv-field"><div class="dv-label">' + escHtml(DL.labelDate) + '</div>' +
+    '<div class="dv-val">' + escHtml(d.loss.date) + '</div></div>' +
+    '<div class="dv-field"><div class="dv-label">' + escHtml(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div>' +
+    '<div class="dv-val">' + escHtml(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + escHtml(d.loss.commune) + '</div></div>';
+  document.getElementById('dv-circumstances').textContent = d.loss.circumstances;
+
+  // ── QR code — صورة PNG مباشرة بدل canvas ──
+  const qrDiv = document.getElementById('dv-qr-img');
+  const qrRef = document.getElementById('dv-qr-ref');
+  qrDiv.innerHTML = '';
+  qrRef.textContent = '';
+  if (d.status !== 'preview') {
+    const lossW   = WILAYAS.find(w => w.code === d.loss.wilaya);
+    const qrText  = [
+      d.reference,
+      d.declarationTypeLabel,
+      (r.lastName + ' ' + r.firstName).trim(),
+      d.loss.date,
+      (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
+    ].filter(Boolean).join(' | ');
+
+    // Try native QRCode lib first (canvas→img), then Google Charts API as fallback
+    if (typeof QRCode !== 'undefined') {
+      var tempDiv = document.createElement('div');
+      new QRCode(tempDiv, {
+        text: qrText, width: 90, height: 90,
+        colorDark: '#000', colorLight: '#fff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      setTimeout(function() {
+        var canvas = tempDiv.querySelector('canvas');
+        var img = document.createElement('img');
+        img.width = 90; img.height = 90; img.style.display = 'block';
+        if (canvas) {
+          img.src = canvas.toDataURL('image/png');
+        } else {
+          // canvas blocked → fallback to Charts API
+          img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
+        }
+        qrDiv.appendChild(img);
+        qrRef.textContent = d.reference;
+      }, 200);
+    } else {
+      // No QRCode lib → Google Charts API
+      var img = document.createElement('img');
+      img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
+      img.width = 90; img.height = 90; img.style.display = 'block';
+      qrDiv.appendChild(img);
+      qrRef.textContent = d.reference;
+    }
   }
 
+  // ── Show/hide mobile hint ──
+  var ua = navigator.userAgent.toLowerCase();
+  var isMobile = /android|iphone|ipad|ipod|mobile/.test(ua);
+  var mHint = document.getElementById('print-mobile-hint');
+  if (mHint) mHint.style.display = isMobile ? 'block' : 'none';
+
+  // ── Switch to step-print ──
+  // Hide all steps
+  ['step-1','step-2','step-3','step-success'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('step-print').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // ── Desktop: auto-open print dialog ──
+  if (!isMobile) {
+    setTimeout(function() { window.print(); }, 600);
+  }
+}
+
+// Called by the print toolbar buttons
+window.doPrint = function() { window.print(); };
+window.closePrintView = function() {
+  document.getElementById('step-print').style.display = 'none';
+  document.getElementById('step-success').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// fillLegacyPrintArea: used ONLY by previewDeclaration to populate #print-area for the modal clone
+function fillLegacyPrintArea(d) {
+  if (!d) return;
+  const r = d.reporter;
+  const now = new Date();
+  const wilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
+  const lossWilaya = WILAYAS.find(w => w.code === d.loss.wilaya);
+  const declType = d.declarationType || 'loss';
+  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
+
+  document.getElementById('print-ref-num').textContent = d.reference;
+  document.getElementById('print-date-label').textContent =
+    'تاريخ الإصدار: ' + now.toLocaleDateString('ar-DZ') + '  ' + now.toLocaleTimeString('ar-DZ');
+
+  document.getElementById('print-reporter').innerHTML =
+    '<div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">' + escHtml(getUserTypeLabel(r.userType)) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">' + escHtml(r.nin||r.passportNum||r.entityName) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">' + escHtml(r.lastName) + ' ' + escHtml(r.firstName) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">الاسم بالحروف اللاتينية</div><div class="pf-val">' + escHtml(r.lastNameLat) + ' ' + escHtml(r.firstNameLat) + '</div></div>' +
+    (r.fatherName ? '<div class="print-field"><div class="pf-label">اسم ولقب الأب</div><div class="pf-val">' + escHtml(r.fatherName) + '</div></div>' : '') +
+    (r.motherName ? '<div class="print-field"><div class="pf-label">اسم ولقب الأم</div><div class="pf-val">' + escHtml(r.motherName) + '</div></div>' : '') +
+    '<div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">' + escHtml(r.birthDate) + ' — ' + escHtml(r.birthPlace) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">' + escHtml(wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + escHtml(r.communeResidence) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">' + escHtml(r.phone) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">' + (escHtml(r.email) || '—') + '</div></div>';
+
+  const gRow = document.getElementById('print-gender-row');
+  const gVal = document.getElementById('print-gender-val');
+  if (r.gender && gRow && gVal) { gRow.style.display = 'block'; gVal.textContent = getGenderLabel(r.gender); }
+  else if (gRow) { gRow.style.display = 'none'; }
+
   let docsHtml = '';
-  d.documents.forEach((doc, i) => {
-    const lossWilaya = WILAYAS.find(w=>w.code===d.loss.wilaya);
-    docsHtml += `<div style="border:1px solid #ccc;padding:8px;margin-bottom:8px;border-radius:4px">
-      <div style="font-weight:700;margin-bottom:6px">الوثيقة ${i+1}: ${escHtml(doc.type)}</div>
-      <div class="print-grid">
-        <div class="print-field"><div class="pf-label">رقم الوثيقة</div><div class="pf-val">${escHtml(doc.number)}</div></div>
-        <div class="print-field"><div class="pf-label">تاريخ الإصدار</div><div class="pf-val">${escHtml(doc.issueDate)||'—'}</div></div>
-        <div class="print-field"><div class="pf-label">تاريخ الانتهاء</div><div class="pf-val">${escHtml(doc.expDate)||'—'}</div></div>
-        <div class="print-field"><div class="pf-label">جهة الإصدار</div><div class="pf-val">${escHtml(doc.authority)||'—'}</div></div>
-      </div>
-    </div>`;
+  d.documents.forEach(function(doc, i) {
+    docsHtml += '<div style="border:1px solid #ccc;padding:8px;margin-bottom:8px;border-radius:4px">' +
+      '<div style="font-weight:700;margin-bottom:6px">الوثيقة ' + (i+1) + ': ' + escHtml(doc.type) + '</div>' +
+      '<div class="print-grid">' +
+      '<div class="print-field"><div class="pf-label">رقم الوثيقة</div><div class="pf-val">' + escHtml(doc.number) + '</div></div>' +
+      '<div class="print-field"><div class="pf-label">تاريخ الإصدار</div><div class="pf-val">' + (escHtml(doc.issueDate)||'—') + '</div></div>' +
+      '<div class="print-field"><div class="pf-label">تاريخ الانتهاء</div><div class="pf-val">'+ (escHtml(doc.expDate)||'—') + '</div></div>' +
+      '<div class="print-field"><div class="pf-label">جهة الإصدار</div><div class="pf-val">'  + (escHtml(doc.authority)||'—') + '</div></div>' +
+      '</div></div>';
   });
   document.getElementById('print-docs').innerHTML = docsHtml;
 
-  const lossWilaya = WILAYAS.find(w=>w.code===d.loss.wilaya);
-  // Update print titles based on declaration type first so labels are ready
-  const declType = d.declarationType || 'loss';
-  const declLabel = d.declarationTypeLabel || 'تصريح بالضياع';
-  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
-  document.getElementById('print-loss').innerHTML = `
-    <div class="print-field"><div class="pf-label">${escHtml(DL.labelDate)}</div><div class="pf-val">${escHtml(d.loss.date)}</div></div>
-    <div class="print-field"><div class="pf-label">${escHtml(DL.labelWilaya.replace('ولاية مكان ','مكان '))}</div><div class="pf-val">${escHtml(lossWilaya?lossWilaya.name:d.loss.wilaya)} &mdash; ${escHtml(d.loss.commune)}</div></div>
-  `;
-  const printTitle = document.querySelector('.print-title');
-  if(printTitle) printTitle.textContent = declLabel;
-  const ptMain = document.getElementById('print-title-main');
-  if(ptMain) ptMain.textContent = DL.printTitle;
-  const ptDocs = document.getElementById('print-docs-label');
-  if(ptDocs) ptDocs.textContent = DL.printDocs;
-  const ptLoss = document.getElementById('print-loss-label');
-  if(ptLoss) ptLoss.textContent = DL.printLoss;
+  document.getElementById('print-loss').innerHTML =
+    '<div class="print-field"><div class="pf-label">' + escHtml(DL.labelDate) + '</div><div class="pf-val">' + escHtml(d.loss.date) + '</div></div>' +
+    '<div class="print-field"><div class="pf-label">' + escHtml(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="pf-val">' + escHtml(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + escHtml(d.loss.commune) + '</div></div>';
+
+  var ptMain = document.getElementById('print-title-main');
+  if (ptMain) ptMain.textContent = DL.printTitle;
+  var ptDocs = document.getElementById('print-docs-label');
+  if (ptDocs) ptDocs.textContent = DL.printDocs;
+  var ptLoss = document.getElementById('print-loss-label');
+  if (ptLoss) ptLoss.textContent = DL.printLoss;
 
   document.getElementById('print-circumstances').textContent = d.loss.circumstances;
-
-  // QR code — deterministic per declaration, generated only for real (non-preview) submissions
-  if(d.status !== 'preview') {
-    const qrContainer = document.getElementById('qr-code-container');
-    if(qrContainer && typeof QRCode !== 'undefined') {
-      qrContainer.innerHTML = '';
-      const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
-      const qrText = [
-        d.reference,
-        d.declarationTypeLabel,
-        (d.reporter.lastName + ' ' + d.reporter.firstName).trim(),
-        d.loss.date,
-        (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
-      ].filter(Boolean).join(' | ');
-      new QRCode(qrContainer, {
-        text: qrText,
-        width: 90,
-        height: 90,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      // After QR renders, convert canvas to <img> so it survives blob export
-      setTimeout(function() {
-        const canvas = qrContainer.querySelector('canvas');
-        if (canvas) {
-          const dataUrl = canvas.toDataURL('image/png');
-          const img = document.createElement('img');
-          img.src = dataUrl;
-          img.width = 90;
-          img.height = 90;
-          img.style.display = 'block';
-          qrContainer.innerHTML = '';
-          qrContainer.appendChild(img);
-        }
-        // Add reference label below QR
-        const lbl = document.createElement('div');
-        lbl.style.cssText = 'font-size:8px;color:#555;text-align:center;margin-top:3px;font-family:monospace;';
-        lbl.textContent = d.reference;
-        qrContainer.appendChild(lbl);
-      }, 300);
-    }
-  }
-
-  const printArea = document.getElementById('print-area');
-  const prevTitle = document.title;
-  // Populate print area
-  printArea.style.display = 'block';
-  if(isPdf) {
-    return;
-  }
-
-  const refNum = submittedData.reference || 'تصريح-GN';
-  document.title = refNum;
-
-  const printStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Cairo', sans-serif; direction: rtl; background: #fff; color: #111; }
-    #print-area { display: block !important; padding: 16px; }
-    .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
-    .print-logo { width: 75px; height: 75px; object-fit: contain; display: block; }
-    .print-titles { text-align: center; flex: 1; }
-    .print-titles p { font-size: 13px; }
-    .print-titles h2 { font-size: 15px; font-weight: 700; margin-top: 4px; }
-    .print-ref { border: 2px solid #000; border-radius: 6px; padding: 8px 14px; text-align: center; margin-bottom: 14px; }
-    .print-ref .ref-label { font-size: 12px; color: #555; }
-    .print-ref .ref-num { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
-    .print-section { margin-bottom: 14px; }
-    .print-section h3 { font-size: 13px; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 8px; color: #111; }
-    .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .print-field { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 5px 8px; }
-    .pf-label { font-size: 10px; color: #555; margin-bottom: 2px; }
-    .pf-val { font-size: 12px; font-weight: 600; }
-    .print-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: 14px; page-break-inside: avoid; break-inside: avoid; }
-    .print-footer .sig { text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 110px; }
-    .print-footer .sig .sig-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-    .print-footer .sig .sig-empty { width: 110px; height: 60px; border-bottom: 1px solid #aaa; }
-    .print-footer .sig-right { align-items: flex-start; }
-    .print-footer .sig-left  { align-items: flex-end; }
-    .print-footer .sig-qr-center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .no-print { display: none !important; }
-    @media print {
-      @page { size: A4 portrait; margin: 10mm 12mm; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
-  `;
-
-  // Determine absolute base URL for assets (logo, etc.)
-  const _baseUrl = (function() {
-    try {
-      // Works on any HTTP/HTTPS origin
-      const u = new URL(window.location.href);
-      return u.origin + u.pathname.replace(/\/[^/]*$/, '/');
-    } catch(_) {
-      return window.location.href.replace(/\/[^\/]*(\?.*)?$/, '/');
-    }
-  })();
-
-  // ===== NEW PRINT SYSTEM v12 =====
-  // Shows the declaration INSIDE the same page by hiding the app UI
-  // and showing a fixed print toolbar + the print-area.
-  // No new window, no popup, no Blob — works on Android/iOS/desktop.
-  // ================================
-  function _buildAndWrite() {
-
-    // ── 1. Inject the in-page print UI toolbar (once) ──
-    var BAR_ID = '__gn_print_bar__';
-    var STYLE_ID = '__gn_print_style__';
-
-    // Remove any stale bar from a previous invocation
-    var oldBar = document.getElementById(BAR_ID);
-    if (oldBar) oldBar.remove();
-
-    // Build toolbar
-    var bar = document.createElement('div');
-    bar.id = BAR_ID;
-    bar.setAttribute('role', 'toolbar');
-    bar.innerHTML =
-      '<button id="__gn_btn_print__" aria-label="طباعة">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:6px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>' +
-        'طباعة / حفظ PDF' +
-      '</button>' +
-      '<button id="__gn_btn_close__" aria-label="رجوع">← رجوع</button>' +
-      '<span id="__gn_ref_lbl__"></span>' +
-      '<div id="__gn_mobile_hint__">📱 اضغط «طباعة» ثم اختر «حفظ كـ PDF»</div>';
-    document.body.insertBefore(bar, document.body.firstChild);
-
-    // ── 2. Inject styles ──
-    var st = document.getElementById(STYLE_ID);
-    if (!st) { st = document.createElement('style'); st.id = STYLE_ID; document.head.appendChild(st); }
-
-    st.textContent =
-      // ── Toolbar on-screen ──
-      '#' + BAR_ID + '{' +
-        'position:fixed;top:0;left:0;right:0;z-index:99999;' +
-        'display:flex;align-items:center;flex-wrap:wrap;gap:8px;' +
-        'padding:10px 14px;' +
-        'background:#1a2332;color:#fff;' +
-        'font-family:\'Cairo\',\'Tahoma\',sans-serif;font-size:14px;' +
-        'box-shadow:0 2px 8px rgba(0,0,0,.4);' +
-      '}' +
-      '#__gn_btn_print__{' +
-        'background:#27ae60;color:#fff;border:none;border-radius:7px;' +
-        'padding:9px 20px;font-size:14px;font-family:inherit;font-weight:600;' +
-        'cursor:pointer;display:flex;align-items:center;gap:4px;' +
-        'box-shadow:0 2px 6px rgba(39,174,96,.4);' +
-        'flex-shrink:0;' +
-      '}' +
-      '#__gn_btn_print__:hover{background:#219a52}' +
-      '#__gn_btn_close__{' +
-        'background:transparent;color:#ccc;border:1px solid #555;' +
-        'border-radius:7px;padding:8px 14px;font-size:13px;font-family:inherit;' +
-        'cursor:pointer;flex-shrink:0;' +
-      '}' +
-      '#__gn_btn_close__:hover{color:#fff;border-color:#aaa}' +
-      '#__gn_ref_lbl__{font-size:13px;color:#aaa;flex:1;text-align:center}' +
-      '#__gn_mobile_hint__{' +
-        'font-size:11px;color:#aaa;width:100%;text-align:center;' +
-        'display:none;' +
-      '}' +
-      '@media(max-width:600px){#__gn_mobile_hint__{display:block}}' +
-
-      // ── Hide app UI on-screen while print view is open ──
-      '.gn-print-view-active .top-bar,' +
-      '.gn-print-view-active .banner,' +
-      '.gn-print-view-active main,' +
-      '.gn-print-view-active footer{display:none!important}' +
-
-      // ── Print-area on-screen ──
-      '.gn-print-view-active #print-area{' +
-        'display:block!important;' +
-        'margin:70px auto 30px!important;' +
-        'max-width:800px!important;' +
-        'padding:20px!important;' +
-        'background:#fff!important;' +
-        'color:#111!important;' +
-        'box-shadow:0 0 16px rgba(0,0,0,.1);' +
-        'border-radius:4px;' +
-      '}' +
-      '@media(max-width:600px){' +
-        '.gn-print-view-active #print-area{margin:72px 0 20px!important;padding:14px!important;box-shadow:none;border-radius:0}' +
-      '}' +
-
-      // ── @media print: hide toolbar, show only print-area ──
-      '@media print{' +
-        '#' + BAR_ID + '{display:none!important}' +
-        'body>*:not(#print-area){display:none!important}' +
-        '#print-area{' +
-          'display:block!important;' +
-          'position:static!important;' +
-          'width:100%!important;margin:0!important;padding:0!important;' +
-          'max-width:100%!important;box-shadow:none!important;' +
-          'background:#fff!important;color:#111!important;' +
-        '}' +
-        '@page{size:A4 portrait;margin:10mm 12mm}' +
-        '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}' +
-      '}';
-
-    // ── 3. Activate print view ──
-    document.title = refNum;
-    document.getElementById('__gn_ref_lbl__').textContent = '📄 ' + refNum;
-    document.documentElement.classList.add('gn-print-view-active');
-    window.scrollTo(0, 0);
-
-    // ── 4. Wire buttons ──
-    function _closePrintView() {
-      document.documentElement.classList.remove('gn-print-view-active');
-      var b = document.getElementById(BAR_ID);
-      if (b) b.remove();
-      var s = document.getElementById(STYLE_ID);
-      if (s) s.remove();
-      printArea.style.display = 'none';
-      document.title = prevTitle;
-    }
-
-    document.getElementById('__gn_btn_close__').onclick = _closePrintView;
-
-    document.getElementById('__gn_btn_print__').onclick = function() {
-      window.print();
-    };
-
-    // afterprint: restore app view automatically on desktop
-    window.addEventListener('afterprint', _closePrintView, { once: true });
-    // Safety fallback
-    var _guard = setTimeout(_closePrintView, 120000);
-    window.addEventListener('afterprint', function(){ clearTimeout(_guard); }, { once: true });
-
-    // Desktop: auto-open print dialog after short delay
-    var ua = navigator.userAgent.toLowerCase();
-    var isMobile = /android|iphone|ipad|ipod|mobile/.test(ua);
-    if (!isMobile) {
-      setTimeout(function() { window.print(); }, 500);
-    }
-  }
-
-  // Wait for QR canvas→img conversion (300ms) then activate view
-  setTimeout(_buildAndWrite, 350);
+  document.getElementById('print-area').style.display = 'block';
 }
-window.printDeclaration=printDeclaration;
+
+function printDeclaration() {
+  if (!submittedData) return;
+  showPrintStep(submittedData);
+}
+window.printDeclaration = printDeclaration;
 
 function getUserTypeLabel(t) {
   return {citizen:'مواطن جزائري',resident:'مقيم أجنبي',entity:'شخص معنوي',tourist:'سائح أجنبي'}[t]||t;
@@ -1248,7 +1151,7 @@ function previewDeclaration() {
   // Temporarily populate the print area using existing logic
   const savedData = submittedData;
   submittedData = pData;
-  printDeclaration(true); // isPdf=true → populate only, no QR, no window.print()
+  fillLegacyPrintArea(pData); // populate #print-area for modal clone only, no print dialog
   submittedData = savedData;
 
   // Clone populated print-area HTML into the preview modal
