@@ -332,6 +332,64 @@
       font-size: 14px;
     }
     .radio-opt input[type="radio"] { accent-color: #27ae60; width: 16px; height: 16px; cursor: pointer; }
+
+    /* ===== GENDER CHECKBOX GROUP ===== */
+    .checkbox-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 4px 0;
+    }
+    .checkbox-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      border: 1.5px solid var(--gn-border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      transition: border-color .2s, background .2s, box-shadow .2s;
+      background: var(--gn-card);
+      user-select: none;
+      position: relative;
+    }
+    .checkbox-opt:hover {
+      border-color: var(--gn-gold-dark);
+      background: var(--gn-gold-light);
+    }
+    .checkbox-opt input[type="checkbox"] {
+      display: none;
+    }
+    .checkbox-opt .checkbox-icon {
+      font-size: 20px;
+      color: var(--gn-text-muted);
+      transition: color .2s;
+    }
+    .checkbox-opt.selected {
+      border-color: var(--gn-gold-dark);
+      background: var(--gn-gold-light);
+      box-shadow: 0 0 0 3px rgba(201,168,0,.18);
+    }
+    .checkbox-opt.selected .checkbox-icon {
+      color: var(--gn-gold-dark);
+    }
+    .checkbox-opt.selected span:last-child {
+      font-weight: 700;
+      color: var(--gn-text);
+    }
+    /* Checkmark badge when selected */
+    .checkbox-opt.selected::after {
+      content: 'check_circle';
+      font-family: 'Material Icons';
+      font-size: 16px;
+      color: var(--gn-gold-dark);
+      position: absolute;
+      top: -7px;
+      left: -7px;
+    }
+    [data-theme="dark"] .checkbox-opt { background: var(--gn-card); }
+    [data-theme="dark"] .checkbox-opt.selected { background: rgba(201,168,0,.12); }
     /* ===== DOCUMENT LIST ===== */
     .doc-list { display: flex; flex-direction: column; gap: 12px; }
     .doc-item {
