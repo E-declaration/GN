@@ -717,13 +717,57 @@ function printDeclaration(isPdf) {
   if(isPdf) {
     return;
   }
-  document.title = submittedData.reference || 'تصريح-GN';
-  // Call print directly within the user-gesture context (avoids RAF losing activation on mobile)
-  window.print();
-  setTimeout(() => {
-    printArea.style.display = 'none';
-    document.title = prevTitle;
-  }, 1500);
+
+  // Detect mobile browsers — window.print() is ignored on Android/iOS Chrome
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+  if(isMobile && typeof html2canvas !== 'undefined' && typeof window.jspdf !== 'undefined') {
+    // Mobile path: generate PDF via html2canvas + jsPDF
+    const refNum = submittedData.reference || 'تصريح-GN';
+    document.title = refNum;
+
+    // Small delay to ensure QR renders
+    setTimeout(() => {
+      html2canvas(printArea, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        width: printArea.scrollWidth,
+        height: printArea.scrollHeight
+      }).then(canvas => {
+        const { jsPDF } = window.jspdf;
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdfW = 210; // A4 width mm
+        const pdfH = (canvas.height * pdfW) / canvas.width;
+        const pdf = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'mm', format: 'a4' });
+        const pageH = pdf.internal.pageSize.getHeight();
+        let yOffset = 0;
+        while(yOffset < pdfH) {
+          if(yOffset > 0) pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, -yOffset, pdfW, pdfH);
+          yOffset += pageH;
+        }
+        pdf.save(refNum + '.pdf');
+        printArea.style.display = 'none';
+        document.title = prevTitle;
+      }).catch(() => {
+        // Fallback to window.print if html2canvas fails
+        window.print();
+        setTimeout(() => { printArea.style.display = 'none'; document.title = prevTitle; }, 1500);
+      });
+    }, 300);
+  } else {
+    // Desktop path: use browser print dialog
+    document.title = submittedData.reference || 'تصريح-GN';
+    window.print();
+    setTimeout(() => {
+      printArea.style.display = 'none';
+      document.title = prevTitle;
+    }, 1500);
+  }
 }
 window.printDeclaration=printDeclaration;
 
