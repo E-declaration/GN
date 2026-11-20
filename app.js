@@ -702,12 +702,31 @@ function printDeclaration(isPdf) {
       ].filter(Boolean).join(' | ');
       new QRCode(qrContainer, {
         text: qrText,
-        width: 80,
-        height: 80,
+        width: 90,
+        height: 90,
         colorDark: '#000000',
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
       });
+      // After QR renders, convert canvas to <img> so it survives blob export
+      setTimeout(function() {
+        const canvas = qrContainer.querySelector('canvas');
+        if (canvas) {
+          const dataUrl = canvas.toDataURL('image/png');
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.width = 90;
+          img.height = 90;
+          img.style.display = 'block';
+          qrContainer.innerHTML = '';
+          qrContainer.appendChild(img);
+        }
+        // Add reference label below QR
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'font-size:8px;color:#555;text-align:center;margin-top:3px;font-family:monospace;';
+        lbl.textContent = d.reference;
+        qrContainer.appendChild(lbl);
+      }, 300);
     }
   }
 
@@ -743,10 +762,10 @@ function printDeclaration(isPdf) {
     .print-field { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 5px 8px; }
     .pf-label { font-size: 10px; color: #555; margin-bottom: 2px; }
     .pf-val { font-size: 12px; font-weight: 600; }
-    .print-footer { display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid #ccc; padding-top: 12px; margin-top: 14px; }
-    .print-footer .sig { text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 130px; }
+    .print-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #ccc; padding-top: 12px; margin-top: 14px; page-break-inside: avoid; break-inside: avoid; }
+    .print-footer .sig { text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 110px; }
     .print-footer .sig .sig-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-    .print-footer .sig .sig-empty { width: 130px; height: 80px; }
+    .print-footer .sig .sig-empty { width: 110px; height: 60px; border-bottom: 1px solid #aaa; }
     .print-footer .sig-right { align-items: flex-start; }
     .print-footer .sig-left  { align-items: flex-end; }
     .print-footer .sig-qr-center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
