@@ -517,35 +517,7 @@
     }
     .print-footer { position: relative; }
 
-    @media print {
-      * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
-      /* ── Hide everything ── */
-      body > * { display: none !important; }
-
-      /* ── Show only #step-print (now a direct child of body) ── */
-      #step-print { display: block !important; }
-      #print-toolbar { display: none !important; }
-      .no-print { display: none !important; }
-
-      #decl-view {
-        margin: 0 !important;
-        padding: 0 !important;
-        max-width: 100% !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        background: #ffffff !important;
-        color: #111111 !important;
-      }
-      #decl-view * {
-        background-color: #ffffff !important;
-        color: #111111 !important;
-      }
-      #decl-view .dv-label { color: #555555 !important; }
-      @page {
-        size: A4 portrait;
-        margin: 10mm 12mm;
-      }
-    }
+    /* @media print removed — printing is handled in a standalone popup window */
     #print-area {
       display: none;
       direction: rtl;
@@ -860,5 +832,4 @@
   #print-toolbar { position: sticky; }
 }
 
-/* ===== @media print — unified (see the print block above) ===== */
-/* The single @media print block above handles both #step-print and #print-area. */
+/* @media print for step-print — removed, printing uses standalone popup window */
