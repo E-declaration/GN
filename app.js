@@ -739,8 +739,168 @@ window.retrySubmit = retrySubmit;
 
 
 // ===== PRINT =====
-// ===== PRINT VIEW — step-print =====
-// Fills #decl-view and switches to #step-print, then window.print()
+// ===== PRINT SYSTEM — opens a standalone print window =====
+// Builds a complete self-contained HTML page and opens it in a new window/tab,
+// then triggers window.print(). Works on all browsers and devices.
+
+function buildPrintHTML(d) {
+  if (!d) return '';
+  const r = d.reporter;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-DZ') + '  ' + now.toLocaleTimeString('ar-DZ');
+  const wilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
+  const lossWilaya = WILAYAS.find(w => w.code === d.loss.wilaya);
+  const declType = d.declarationType || 'loss';
+  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // Reporter rows
+  const reporterRows = [
+    ['الفئة', getUserTypeLabel(r.userType)],
+    ['رقم التعريف', r.nin || r.passportNum || r.entityName],
+    ['اللقب والاسم (عربي)', (r.lastName + ' ' + r.firstName).trim()],
+    ['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()],
+    r.fatherName ? ['اسم ولقب الأب', r.fatherName] : null,
+    r.motherName ? ['اسم ولقب الأم', r.motherName] : null,
+    r.gender ? ['الجنس', getGenderLabel(r.gender)] : null,
+    ['تاريخ ومكان الميلاد', r.birthDate + ' — ' + r.birthPlace],
+    ['مكان الإقامة', (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence],
+    ['الهاتف', r.phone],
+    ['البريد الإلكتروني', r.email || '—'],
+  ].filter(Boolean);
+
+  const reporterHTML = reporterRows.map(([lbl, val]) =>
+    '<div class="field"><div class="lbl">' + esc(lbl) + '</div><div class="val">' + esc(val||'—') + '</div></div>'
+  ).join('');
+
+  // Documents
+  let docsHTML = '';
+  d.documents.forEach(function(doc, i) {
+    docsHTML += '<div class="doc-box">' +
+      '<div class="doc-title">الوثيقة ' + (i+1) + ': ' + esc(doc.type) + '</div>' +
+      '<div class="grid">' +
+      '<div class="field"><div class="lbl">رقم الوثيقة</div><div class="val">' + esc(doc.number) + '</div></div>' +
+      '<div class="field"><div class="lbl">تاريخ الإصدار</div><div class="val">' + (esc(doc.issueDate)||'—') + '</div></div>' +
+      '<div class="field"><div class="lbl">تاريخ الانتهاء</div><div class="val">' + (esc(doc.expDate)||'—') + '</div></div>' +
+      '<div class="field"><div class="lbl">جهة الإصدار</div><div class="val">' + (esc(doc.authority)||'—') + '</div></div>' +
+      '</div></div>';
+  });
+
+  // Loss
+  const lossHTML =
+    '<div class="field"><div class="lbl">' + esc(DL.labelDate) + '</div><div class="val">' + esc(d.loss.date) + '</div></div>' +
+    '<div class="field"><div class="lbl">' + esc(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="val">' + esc(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + esc(d.loss.commune) + '</div></div>';
+
+  // QR — Google Charts API (works without canvas, no external lib needed)
+  let qrHTML = '';
+  if (d.status !== 'preview') {
+    const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
+    const qrText = [
+      d.reference,
+      d.declarationTypeLabel,
+      (r.lastName + ' ' + r.firstName).trim(),
+      d.loss.date,
+      (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
+    ].filter(Boolean).join(' | ');
+    const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
+    qrHTML = '<img src="' + qrSrc + '" width="90" height="90" style="display:block">' +
+             '<div style="font-size:8px;color:#555;text-align:center;margin-top:3px;font-family:monospace">' + esc(d.reference) + '</div>';
+  }
+
+  // Logo URL — absolute so it works from the new window
+  const logoSrc = (function() {
+    var base = location.href.replace(/\/[^/]*$/, '/');
+    return base + 'logo_gn.png';
+  })();
+
+  return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>تصريح ' + esc(d.reference) + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">' +
+    '<style>' +
+    '*{box-sizing:border-box;margin:0;padding:0}' +
+    'body{font-family:Cairo,Tahoma,Arial,sans-serif;font-size:13px;color:#111;background:#fff;direction:rtl;padding:16px}' +
+    '.no-print{background:#1a2332;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;border-radius:6px}' +
+    '.no-print button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600}' +
+    '.btn-print{background:#27ae60;color:#fff}.btn-close{background:transparent;color:#ccc;border:1px solid #555 !important}' +
+    '.decl{max-width:800px;margin:0 auto;background:#fff}' +
+    '.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px double #1a2332;padding-bottom:12px;margin-bottom:12px}' +
+    '.logo{width:70px;height:auto}' +
+    '.titles{text-align:center;font-size:12px;line-height:1.6}' +
+    '.titles h2{font-size:15px;font-weight:900;margin-top:4px;color:#1a2332}' +
+    '.ref-box{text-align:center;border:2px solid #1a2332;border-radius:6px;padding:10px;margin-bottom:16px}' +
+    '.ref-num{font-size:22px;font-weight:900;letter-spacing:1px;font-family:monospace}' +
+    '.ref-date{font-size:11px;color:#555;margin-top:4px}' +
+    '.section{margin-bottom:16px;border:1px solid #ddd;border-radius:6px;overflow:hidden}' +
+    '.section h3{background:#1a2332;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;margin:0}' +
+    '.section-body{padding:10px 12px}' +
+    '.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}' +
+    '.field{background:#f7f7f7;border-radius:4px;padding:6px 8px}' +
+    '.lbl{font-size:10px;color:#666;margin-bottom:2px}' +
+    '.val{font-size:12px;font-weight:600}' +
+    '.doc-box{border:1px solid #ccc;border-radius:4px;padding:8px;margin-bottom:8px}' +
+    '.doc-title{font-weight:700;margin-bottom:6px;font-size:12px}' +
+    '.circumstances{font-size:12px;border:1px solid #ccc;padding:8px;min-height:50px;border-radius:4px;margin-top:8px}' +
+    '.footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:20px;border-top:2px solid #1a2332;padding-top:12px}' +
+    '.sig{text-align:center;width:140px}' +
+    '.sig-label{font-size:11px;color:#555;margin-bottom:40px}' +
+    '.sig-line{border-top:1px solid #999;width:120px;margin:0 auto}' +
+    '.qr-center{text-align:center}' +
+    '@media print{' +
+    '.no-print{display:none !important}' +
+    'body{padding:0}' +
+    '@page{size:A4 portrait;margin:10mm 12mm}' +
+    '*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}' +
+    '}' +
+    '</style></head><body>' +
+    '<div class="no-print">' +
+    '<button class="btn-close" onclick="window.close()">✕ إغلاق</button>' +
+    '<span style="flex:1;text-align:center;font-size:13px;color:#aaa">📄 ' + esc(d.reference) + '</span>' +
+    '<button class="btn-print" onclick="window.print()">🖨 طباعة / حفظ PDF</button>' +
+    '</div>' +
+    '<div class="decl">' +
+    '<div class="hdr">' +
+    '<img src="' + logoSrc + '" class="logo" alt="شعار الدرك">' +
+    '<div class="titles"><p>الجمهورية الجزائرية الديمقراطية الشعبية</p><p>وزارة الدفاع الوطني</p><p><strong>قيادة الدرك الوطني</strong></p><h2>' + esc(DL.printTitle) + '</h2></div>' +
+    '<img src="' + logoSrc + '" class="logo" alt="شعار الدرك">' +
+    '</div>' +
+    '<div class="ref-box"><div class="ref-num">' + esc(d.reference) + '</div><div class="ref-date">تاريخ الإصدار: ' + esc(dateStr) + '</div></div>' +
+    '<div class="section"><h3>معلومات المصرّح</h3><div class="section-body"><div class="grid">' + reporterHTML + '</div></div></div>' +
+    '<div class="section"><h3>' + esc(DL.printDocs) + '</h3><div class="section-body">' + docsHTML + '</div></div>' +
+    '<div class="section"><h3>' + esc(DL.printLoss) + '</h3><div class="section-body"><div class="grid">' + lossHTML + '</div>' +
+    '<div class="lbl" style="font-size:10px;margin-top:8px">الوصف:</div><div class="circumstances">' + esc(d.loss.circumstances) + '</div></div></div>' +
+    '<div class="footer">' +
+    '<div class="sig"><div class="sig-label">الامضاء</div><div class="sig-line"></div></div>' +
+    '<div class="qr-center">' + qrHTML + '</div>' +
+    '<div class="sig"><div class="sig-label">الختم</div><div class="sig-line"></div></div>' +
+    '</div>' +
+    '</div>' +
+    '<script>window.onload=function(){window.print();}<\/script>' +
+    '</body></html>';
+}
+
+function openPrintWindow(d) {
+  if (!d) return;
+  var html = buildPrintHTML(d);
+  var pw = window.open('', '_blank', 'width=900,height=700');
+  if (!pw) {
+    // Popup blocked — fallback: use data URI
+    var blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+    return;
+  }
+  pw.document.open();
+  pw.document.write(html);
+  pw.document.close();
+}
+
+// Keep showPrintStep as a thin wrapper (called from various places)
 function showPrintStep(d) {
   if (!d) return;
   const r = d.reporter;
@@ -855,32 +1015,19 @@ function showPrintStep(d) {
     }
   }
 
-  // ── Show/hide mobile hint ──
-  var ua = navigator.userAgent.toLowerCase();
-  var isMobile = /android|iphone|ipad|ipod|mobile/.test(ua);
-  var mHint = document.getElementById('print-mobile-hint');
-  if (mHint) mHint.style.display = isMobile ? 'block' : 'none';
-
-  // ── Switch to step-print ──
-  // Hide main app container and show print view
-  var mainEl = document.querySelector('main');
-  if (mainEl) mainEl.style.display = 'none';
-  document.getElementById('step-print').style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  // ── Desktop: auto-open print dialog ──
-  if (!isMobile) {
-    setTimeout(function() { window.print(); }, 600);
-  }
+  // showPrintStep now just opens the print window directly
+  openPrintWindow(d);
 }
 
-// Called by the print toolbar buttons
-window.doPrint = function() { window.print(); };
+// Called by the print toolbar buttons (kept for backward compat)
+window.doPrint = function() { if (submittedData) openPrintWindow(submittedData); };
 window.closePrintView = function() {
-  document.getElementById('step-print').style.display = 'none';
+  var sp = document.getElementById('step-print');
+  if (sp) sp.style.display = 'none';
   var mainEl = document.querySelector('main');
   if (mainEl) mainEl.style.display = '';
-  document.getElementById('step-success').style.display = 'block';
+  var ss = document.getElementById('step-success');
+  if (ss) ss.style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -945,7 +1092,7 @@ function fillLegacyPrintArea(d) {
 
 function printDeclaration() {
   if (!submittedData) return;
-  showPrintStep(submittedData);
+  openPrintWindow(submittedData);
 }
 window.printDeclaration = printDeclaration;
 
