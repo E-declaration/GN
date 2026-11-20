@@ -667,16 +667,16 @@ function printDeclaration(isPdf) {
   document.getElementById('print-docs').innerHTML = docsHtml;
 
   const lossWilaya = WILAYAS.find(w=>w.code===d.loss.wilaya);
-  document.getElementById('print-loss').innerHTML = `
-    <div class="print-field"><div class="pf-label">تاريخ الضياع</div><div class="pf-val">${escHtml(d.loss.date)}</div></div>
-    <div class="print-field"><div class="pf-label">مكان الضياع</div><div class="pf-val">${escHtml(lossWilaya?lossWilaya.name:d.loss.wilaya)} &mdash; ${escHtml(d.loss.commune)}</div></div>
-  `;
-  // Update print titles based on declaration type
+  // Update print titles based on declaration type first so labels are ready
   const declType = d.declarationType || 'loss';
   const declLabel = d.declarationTypeLabel || 'تصريح بالضياع';
+  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
+  document.getElementById('print-loss').innerHTML = `
+    <div class="print-field"><div class="pf-label">${escHtml(DL.labelDate)}</div><div class="pf-val">${escHtml(d.loss.date)}</div></div>
+    <div class="print-field"><div class="pf-label">${escHtml(DL.labelWilaya.replace('ولاية مكان ','مكان '))}</div><div class="pf-val">${escHtml(lossWilaya?lossWilaya.name:d.loss.wilaya)} &mdash; ${escHtml(d.loss.commune)}</div></div>
+  `;
   const printTitle = document.querySelector('.print-title');
   if(printTitle) printTitle.textContent = declLabel;
-  const DL = DECL_LABELS[declType] || DECL_LABELS.loss;
   const ptMain = document.getElementById('print-title-main');
   if(ptMain) ptMain.textContent = DL.printTitle;
   const ptDocs = document.getElementById('print-docs-label');
@@ -718,16 +718,12 @@ function printDeclaration(isPdf) {
     return;
   }
   document.title = submittedData.reference || 'تصريح-GN';
-  // Use requestAnimationFrame to ensure the DOM is painted before print
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.print();
-      setTimeout(() => {
-        printArea.style.display = 'none';
-        document.title = prevTitle;
-      }, 1500);
-    });
-  });
+  // Call print directly within the user-gesture context (avoids RAF losing activation on mobile)
+  window.print();
+  setTimeout(() => {
+    printArea.style.display = 'none';
+    document.title = prevTitle;
+  }, 1500);
 }
 window.printDeclaration=printDeclaration;
 
