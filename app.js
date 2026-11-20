@@ -636,7 +636,8 @@ function printDeclaration(isPdf) {
   document.getElementById('print-ref-num').textContent = d.reference;
   const now = new Date();
   document.getElementById('print-date-label').textContent = `تاريخ الإصدار: ${now.toLocaleDateString('ar-DZ')}  ${now.toLocaleTimeString('ar-DZ')}`;
-  document.getElementById('print-print-date').textContent = now.toLocaleDateString('ar-DZ');
+  const _ppd = document.getElementById('print-print-date');
+  if(_ppd) _ppd.textContent = now.toLocaleDateString('ar-DZ');
 
   const r = d.reporter;
   const wilaya = WILAYAS.find(w=>w.code===r.wilayaResidence);
@@ -729,7 +730,7 @@ function printDeclaration(isPdf) {
     body { font-family: 'Cairo', sans-serif; direction: rtl; background: #fff; color: #111; }
     #print-area { display: block !important; padding: 16px; }
     .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
-    .print-header img { border-radius: 50%; width: 65px; height: 65px; object-fit: contain; }
+    .print-logo { width: 75px; height: 75px; object-fit: contain; display: block; }
     .print-titles { text-align: center; flex: 1; }
     .print-titles p { font-size: 13px; }
     .print-titles h2 { font-size: 15px; font-weight: 700; margin-top: 4px; }
@@ -742,13 +743,23 @@ function printDeclaration(isPdf) {
     .print-field { background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 5px 8px; }
     .pf-label { font-size: 10px; color: #555; margin-bottom: 2px; }
     .pf-val { font-size: 12px; font-weight: 600; }
-    .print-footer { text-align: center; font-size: 11px; color: #555; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 14px; }
+    .print-footer { display: flex; justify-content: space-between; align-items: flex-start; border-top: 1px solid #ccc; padding-top: 12px; margin-top: 14px; }
+    .print-footer .sig { text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 130px; }
+    .print-footer .sig .sig-label { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .print-footer .sig .sig-empty { width: 130px; height: 80px; }
+    .print-footer .sig-right { align-items: flex-start; }
+    .print-footer .sig-left  { align-items: flex-end; }
+    .print-footer .sig-qr-center { display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .no-print { display: none !important; }
     @media print {
       @page { size: A4 portrait; margin: 10mm 12mm; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   `;
+
+  // Build absolute base URL so images resolve correctly inside the blob
+  const _baseUrl = window.location.href.replace(/\/[^\/]*(\?.*)?$/, '/');
+  const _printBody = printArea.innerHTML.replace(/(src=["'])logo_gn\.(png|jpg)(["'])/g, `$1${_baseUrl}logo_gn.png$3`);
 
   const printHtml = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -760,7 +771,7 @@ function printDeclaration(isPdf) {
 </head>
 <body>
   <div id="print-area">
-    ${printArea.innerHTML}
+    ${_printBody}
   </div>
   <script>
     // Auto-trigger print dialog when page opens (works on desktop & most mobile)
