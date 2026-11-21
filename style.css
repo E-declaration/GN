@@ -301,10 +301,27 @@
     /* ===== intl-tel-input RTL fix ===== */
     .iti { width: 100%; direction: ltr; }
     .iti__flag-container { left: 0; right: auto; }
+    #phone-iti-wrapper { position: relative; }
     #phone-iti-wrapper .iti input[type="tel"] {
       padding-left: 90px !important;
       padding-right: 10px !important;
       text-align: left;
+    }
+    /* Fix dropdown staying inside form card */
+    .iti__dropdown-content,
+    .iti__country-list {
+      position: absolute !important;
+      z-index: 9999 !important;
+      max-height: 220px !important;
+      overflow-y: auto !important;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+      left: 0 !important;
+      right: auto !important;
+      top: 100% !important;
+      min-width: 260px;
     }
 
     .form-grid {
