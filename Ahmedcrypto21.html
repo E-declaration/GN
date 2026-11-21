@@ -108,16 +108,17 @@
     .pw-wrap { position: relative; }
     .pw-wrap input { width: 100%; padding-left: 40px !important; }
     .pw-eye {
-      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-      cursor: pointer; color: var(--text3); font-size: 20px;
-      user-select: none; display: flex; align-items: center;
-      /* Larger touch target for mobile */
-      padding: 8px; margin: -8px;
+      position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+      cursor: pointer; color: var(--text3);
+      background: none; border: none; outline: none;
+      user-select: none; display: flex; align-items: center; justify-content: center;
+      padding: 6px;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
       z-index: 2;
+      border-radius: 50%;
     }
-    .pw-eye:hover, .pw-eye:active { color: var(--text); opacity: 0.9; }
+    .pw-eye:hover, .pw-eye:active { color: var(--text); background: rgba(0,0,0,0.05); }
 
     /* ===== ADMIN PANEL ===== */
     #admin-panel { display: none; }
@@ -454,7 +455,12 @@
       <div class="pw-wrap">
         <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" dir="ltr"
                onkeydown="if(event.key==='Enter') doLogin()">
-        <span class="pw-eye material-icons" onclick="togglePw()" id="pw-eye-icon">visibility_off</span>
+        <button type="button" class="pw-eye" onclick="togglePw()" id="pw-eye-icon" title="إظهار/إخفاء كلمة السر" aria-label="إظهار كلمة السر">
+          <!-- eye-off SVG (shown by default) -->
+          <svg id="svg-eye-off" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          <!-- eye SVG (hidden by default) -->
+          <svg id="svg-eye-on" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </div>
     </div>
     <button class="login-btn" onclick="doLogin()">دخول</button>
@@ -789,13 +795,12 @@ let isLoggedIn = false;
 
 function togglePw() {
   const inp = document.getElementById('login-pass');
-  const icon = document.getElementById('pw-eye-icon');
+  const eyeOff = document.getElementById('svg-eye-off');
+  const eyeOn  = document.getElementById('svg-eye-on');
   const isHidden = inp.type === 'password';
   inp.type = isHidden ? 'text' : 'password';
-  // support both Material Icons (font) and SVG fallback
-  icon.textContent = isHidden ? 'visibility' : 'visibility_off';
-  icon.title = isHidden ? 'إخفاء كلمة السر' : 'إظهار كلمة السر';
-  icon.style.opacity = '1';
+  if (eyeOff) eyeOff.style.display = isHidden ? 'none' : '';
+  if (eyeOn)  eyeOn.style.display  = isHidden ? '' : 'none';
 }
 
 function checkSession() {
