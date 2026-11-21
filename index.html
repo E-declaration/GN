@@ -20,6 +20,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="E-Dec GN">
   <link rel="stylesheet" href="style.css">
+  <!-- intl-tel-input for country code picker -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/css/intlTelInput.min.css">
 </head>
 <body>
 
@@ -98,7 +100,7 @@
     <!-- ===== STEP 1 ===== -->
     <div id="step-1">
       <div class="form-grid">
-        <div class="section-label col-span-2"><span>نوع التصريح</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>نوع التصريح</span><div class="line"></div></div>
         <div class="field col-span-2">
           <label for="declarationType">نوع التصريح <span class="req">*</span></label>
           <div class="radio-group">
@@ -117,7 +119,7 @@
           </div>
         </div>
 
-        <div class="section-label col-span-2"><span>صفة المصرّح</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>صفة المصرّح</span><div class="line"></div></div>
         <div class="col-span-2">
           <div class="radio-group">
             <label class="radio-opt">
@@ -131,7 +133,7 @@
           </div>
         </div>
 
-        <div class="section-label col-span-2"><span>هوية المصرّح</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>هوية المصرّح</span><div class="line"></div></div>
 
         <div class="field">
           <label for="userType">الفئة <span class="req">*</span></label>
@@ -199,24 +201,31 @@
           <span class="hint">(مطابق لوثائق الهوية)</span>
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
-        <div class="field">
+        <div class="field" id="lastNameLat-field">
           <label for="lastNameLat">اللقب (باللاتينية)</label>
           <input type="text" id="lastNameLat" placeholder="NOM" oninput="enforceLatin(this)" onblur="this.value=this.value.trim().toUpperCase()">
         </div>
-        <div class="field">
+        <div class="field" id="firstNameLat-field">
           <label for="firstNameLat">الاسم (باللاتينية)</label>
           <input type="text" id="firstNameLat" placeholder="PRÉNOM" oninput="enforceLatin(this)" onblur="this.value=this.value.trim().toUpperCase()">
+        </div>
+
+        <!-- حقل موحد للأجانب فقط (مقيم أجنبي / سائح أجنبي) -->
+        <div class="field col-span-2" id="foreignName-field" style="display:none">
+          <label for="foreignName">الاسم واللقب <span class="req">*</span></label>
+          <input type="text" id="foreignName" placeholder="الاسم واللقب (بأي لغة)" onblur="this.value=this.value.trim()">
+          <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
         <div class="field" id="fatherName-field">
           <label for="fatherName">اسم ولقب الأب</label>
           <input type="text" id="fatherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
-          <span class="hint">اختياري — أي خط أو لغة مقبولة</span>
+          <span class="hint">اختياري</span>
         </div>
         <div class="field" id="motherName-field">
           <label for="motherName">اسم ولقب الأم</label>
           <input type="text" id="motherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
-          <span class="hint">اختياري — أي خط أو لغة مقبولة</span>
+          <span class="hint">اختياري</span>
         </div>
 
         <div class="field">
@@ -238,7 +247,7 @@
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
-        <div class="section-label col-span-2"><span>عنوان الإقامة</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>عنوان الإقامة</span><div class="line"></div></div>
 
         <div class="field">
           <label for="wilayaResidence">ولاية الإقامة <span class="req">*</span></label>
@@ -255,13 +264,22 @@
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
-        <div class="section-label col-span-2"><span>معلومات التواصل</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>معلومات التواصل</span><div class="line"></div></div>
 
-        <div class="field">
+        <div class="field" id="phone-field-wrapper">
           <label for="phone">رقم الهاتف <span class="req">*</span></label>
-          <input type="tel" id="phone" placeholder="0XXXXXXXXX" inputmode="tel"
-            oninput="this.value=this.value.replace(/[^0-9+]/g,'')" onblur="validatePhone(this)">
-          <span class="err-msg">أدخل رقم هاتف صحيح (10 أرقام)</span>
+          <div id="phone-iti-wrapper">
+            <input type="tel" id="phone" placeholder="0XXXXXXXXX" inputmode="tel"
+              onblur="validatePhone(this)">
+          </div>
+          <span class="err-msg">أدخل رقم هاتف صحيح</span>
+        </div>
+        <!-- حقل هاتف بسيط للشخص المعنوي -->
+        <div class="field" id="phone-entity-field" style="display:none">
+          <label for="phone-entity">رقم الهاتف <span class="req">*</span></label>
+          <input type="tel" id="phone-entity" placeholder="0XXXXXXXXX" inputmode="tel"
+            oninput="this.value=this.value.replace(/[^0-9+\-\s]/g,'')" onblur="validatePhone(this)">
+          <span class="err-msg">أدخل رقم هاتف صحيح</span>
         </div>
         <div class="field">
           <label for="email">البريد الإلكتروني</label>
@@ -299,7 +317,7 @@
     <!-- ===== STEP 3 ===== -->
     <div id="step-3" style="display:none">
       <div class="form-grid">
-        <div class="section-label col-span-2"><span id="section-label-loss">ظروف الضياع</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span id="section-label-loss">ظروف الضياع</span><div class="line"></div></div>
 
         <div class="field">
           <label for="lossDate" id="label-loss-date">تاريخ الضياع المقدّر <span class="req">*</span></label>
@@ -330,7 +348,7 @@
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
-        <div class="section-label col-span-2"><span>إفادة وتعهد</span><div class="line"></div></div>
+        <div class="section-label section-label-green col-span-2"><span>إفادة وتعهد</span><div class="line"></div></div>
         <div class="col-span-2">
           <label class="radio-opt">
             <input type="checkbox" id="oath" style="accent-color:var(--gn-gold-dark);width:16px;height:16px">
@@ -573,6 +591,7 @@
   console.log("Firebase initialized");
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/intlTelInput.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <!-- EmailJS SDK — used for silent backup email (recipient configured on dashboard) -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
