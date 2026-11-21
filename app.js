@@ -158,7 +158,21 @@ function initPhoneITI() {
     initialCountry: 'dz',
     preferredCountries: ['dz', 'tn', 'ma', 'ly', 'mr', 'ml', 'ne', 'td', 'fr', 'sa', 'ae', 'eg'],
     separateDialCode: true,
-    utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.min.js'
+    useFullscreenPopup: false,
+    countrySearch: true,
+    loadUtils: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.5.3/js/utils.min.js'
+  });
+  // Prevent dropdown from auto-opening on page load / focus
+  phoneInput.addEventListener('focus', function(e) {
+    // Only open dropdown on explicit user interaction, not programmatic focus
+  });
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#phone-iti-wrapper') && !e.target.closest('.iti__dropdown-content')) {
+      if (itiPhone && typeof itiPhone.closeDropdown === 'function') {
+        itiPhone.closeDropdown();
+      }
+    }
   });
 }
 
