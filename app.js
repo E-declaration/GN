@@ -339,6 +339,12 @@ const PHONE_COUNTRIES = [
 
 let selectedPhoneCountry = PHONE_COUNTRIES[0]; // Algeria default
 
+function getFlagImgHTML(code, size) {
+  const s = size || 22;
+  const cc = code.toLowerCase();
+  return `<img src="https://flagcdn.com/w${s}/${cc}.png" srcset="https://flagcdn.com/w${s*2}/${cc}.png 2x" width="${s}" height="${Math.round(s*0.67)}" alt="${code}" style="border-radius:2px;vertical-align:middle;object-fit:cover;">`;
+}
+
 function buildPhoneCountryList(filter) {
   const list = document.getElementById('phoneCountryList');
   if (!list) return;
@@ -348,7 +354,7 @@ function buildPhoneCountryList(filter) {
   const render = (arr) => arr.forEach(c => {
     const item = document.createElement('div');
     item.className = 'phone-country-item' + (c.code === selectedPhoneCountry.code ? ' selected' : '');
-    item.innerHTML = `<span class="flag-emoji">${c.flag}</span><span class="country-name">${c.name}</span><span class="country-dial">${c.dial}</span>`;
+    item.innerHTML = `<span class="flag-img-wrap">${getFlagImgHTML(c.code, 22)}</span><span class="country-name">${c.name}</span><span class="country-dial">${c.dial}</span>`;
     item.onclick = () => selectPhoneCountry(c);
     list.appendChild(item);
   });
@@ -365,7 +371,7 @@ function selectPhoneCountry(country) {
   selectedPhoneCountry = country;
   const flagEl = document.getElementById('phoneFlag');
   const dialEl = document.getElementById('phoneDialCode');
-  if (flagEl) flagEl.textContent = country.flag;
+  if (flagEl) flagEl.innerHTML = getFlagImgHTML(country.code, 22);
   if (dialEl) dialEl.textContent = country.dial;
   closePhoneDropdown();
 }
@@ -401,6 +407,9 @@ function getPhoneWithDialCode() {
 
 function initPhoneITI() {
   buildPhoneCountryList('');
+  // Set initial flag image for the selected country (Algeria)
+  const flagEl = document.getElementById('phoneFlag');
+  if (flagEl) flagEl.innerHTML = getFlagImgHTML(selectedPhoneCountry.code, 22);
   // Close dropdown on outside click
   document.addEventListener('click', function(e) {
     if (!e.target.closest('.phone-picker-wrap')) {
@@ -1113,20 +1122,40 @@ function buildPrintHTML(d) {
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  // Reporter rows
-  const reporterRows = [
-    ['الفئة', getUserTypeLabel(r.userType)],
-    ['رقم التعريف', r.nin || r.passportNum || r.entityName],
-    ['اللقب والاسم (عربي)', (r.lastName + ' ' + r.firstName).trim()],
-    ['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()],
-    r.fatherName ? ['اسم ولقب الأب', r.fatherName] : null,
-    r.motherName ? ['اسم ولقب الأم', r.motherName] : null,
-    r.gender ? ['الجنس', getGenderLabel(r.gender)] : null,
-    ['تاريخ ومكان الميلاد', r.birthDate + ' — ' + r.birthPlace],
-    ['مكان الإقامة', (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence],
-    ['الهاتف', r.phone],
-    ['البريد الإلكتروني', r.email || '—'],
-  ].filter(Boolean);
+  // Reporter rows — built according to userType (matching form fields)
+  const uType = r.userType;
+  let reporterRows = [];
+  reporterRows.push(['الفئة', getUserTypeLabel(uType)]);
+  if (uType === 'citizen') {
+    reporterRows.push(['رقم التعريف الوطني (NIN)', r.nin]);
+    reporterRows.push(['اللقب والاسم (عربي)', (r.lastName + ' ' + r.firstName).trim()]);
+    reporterRows.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'resident') {
+    reporterRows.push(['رقم بطاقة الإقامة', r.passportNum]);
+    reporterRows.push(['الاسم الكامل', r.lastName]);
+    reporterRows.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'tourist') {
+    reporterRows.push(['رقم جواز السفر', r.passportNum]);
+    reporterRows.push(['الاسم الكامل', r.lastName]);
+    reporterRows.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'entity') {
+    reporterRows.push(['اسم الجهة / المؤسسة', r.entityName]);
+  }
+  if (uType !== 'entity') {
+    if (r.gender) reporterRows.push(['الجنس', getGenderLabel(r.gender)]);
+    reporterRows.push(['تاريخ ومكان الميلاد', r.birthDate + ' — ' + r.birthPlace]);
+  }
+  reporterRows.push(['مكان الإقامة', (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence]);
+  if (r.addressResidence) reporterRows.push(['العنوان', r.addressResidence]);
+  reporterRows.push(['الهاتف', r.phone]);
+  reporterRows.push(['البريد الإلكتروني', r.email || '—']);
+  reporterRows = reporterRows.filter(row => row && row[1]);
 
   const reporterHTML = reporterRows.map(([lbl, val]) =>
     '<div class="field"><div class="lbl">' + esc(lbl) + '</div><div class="val">' + esc(val||'—') + '</div></div>'
@@ -1150,7 +1179,7 @@ function buildPrintHTML(d) {
     '<div class="field"><div class="lbl">' + esc(DL.labelDate) + '</div><div class="val">' + esc(d.loss.date) + '</div></div>' +
     '<div class="field"><div class="lbl">' + esc(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="val">' + esc(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + esc(d.loss.commune) + '</div></div>';
 
-  // QR — QRCode.js canvas (injected by script tag in the new window)
+  // QR — Google Charts API (reliable) with QRCode.js as enhancement
   let qrHTML = '';
   if (d.status !== 'preview') {
     const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
@@ -1162,25 +1191,13 @@ function buildPrintHTML(d) {
       d.loss.date,
       (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
     ].filter(Boolean).join(' | ');
-    // Use a div + inline script so QRCode.js (loaded in new window) renders a real canvas QR
-    const qrTextEsc = esc(qrText);
+    // Primary: Google Charts API (always works, no JS needed)
+    const qrGoogleUrl = 'https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8&chld=M|1';
     qrHTML = '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
-             '<div id="qr-print-canvas"></div>' +
+             '<img id="qr-print-img" src="' + qrGoogleUrl + '" width="120" height="120" alt="QR" style="display:block;" onerror="this.style.display=\'none\';document.getElementById(\'qr-fallback\').style.display=\'block\'">' +
+             '<div id="qr-fallback" style="display:none;width:120px;height:120px;border:1px dashed #ccc;line-height:120px;font-size:10px;color:#999;text-align:center">QR</div>' +
              '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + esc(d.reference) + '</div>' +
-             '</div>' +
-             '<script>(function(){' +
-             'function tryQR(){' +
-             'if(typeof QRCode!=="undefined"){' +
-             'new QRCode(document.getElementById("qr-print-canvas"),{text:"' + qrTextEsc.replace(/"/g,'\\"') + '",width:110,height:110,colorDark:"#000",colorLight:"#fff",correctLevel:QRCode.CorrectLevel.M});' +
-             '}else{' +
-             'var img=document.createElement("img");' +
-             'img.src="https://chart.googleapis.com/chart?cht=qr&chs=110x110&chl="+encodeURIComponent("' + qrTextEsc.replace(/"/g,'\\"') + '")+"&choe=UTF-8";' +
-             'img.width=110;img.height=110;' +
-             'document.getElementById("qr-print-canvas").appendChild(img);' +
-             '}' +
-             '}' +
-             'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",tryQR);}else{tryQR();}' +
-             '})();<\/script>';
+             '</div>';
   }
 
   // Logo URL — absolute so it works from the new window
@@ -1192,7 +1209,6 @@ function buildPrintHTML(d) {
   return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>تصريح ' + esc(d.reference) + '</title>' +
-    '<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>' +
     '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">' +
     '<style>' +
     '*{box-sizing:border-box;margin:0;padding:0}' +
@@ -1288,20 +1304,41 @@ function showPrintStep(d) {
   document.getElementById('dv-date-label').textContent =
     'تاريخ الإصدار: ' + now.toLocaleDateString('ar-DZ') + '  ' + now.toLocaleTimeString('ar-DZ');
 
-  // ── Reporter fields ──
+  // ── Reporter fields — built according to userType ──
   const wilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
-  const reporterFields = [
-    ['الفئة',                    getUserTypeLabel(r.userType)],
-    ['رقم التعريف',              r.nin || r.passportNum || r.entityName],
-    ['اللقب والاسم (عربي)',      (r.lastName  + ' ' + r.firstName).trim()],
-    ['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()],
-    r.fatherName ? ['اسم ولقب الأب', r.fatherName] : null,
-    r.motherName ? ['اسم ولقب الأم', r.motherName] : null,
-    ['تاريخ ومكان الميلاد',     r.birthDate + ' — ' + r.birthPlace],
-    ['مكان الإقامة',            (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence],
-    ['الهاتف',                  r.phone],
-    ['البريد الإلكتروني',       r.email || '—'],
-  ].filter(Boolean);
+  const spType = r.userType;
+  let reporterFields = [];
+  reporterFields.push(['الفئة', getUserTypeLabel(spType)]);
+  if (spType === 'citizen') {
+    reporterFields.push(['رقم التعريف الوطني (NIN)', r.nin]);
+    reporterFields.push(['اللقب والاسم (عربي)', (r.lastName + ' ' + r.firstName).trim()]);
+    reporterFields.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (spType === 'resident') {
+    reporterFields.push(['رقم بطاقة الإقامة', r.passportNum]);
+    reporterFields.push(['الاسم الكامل', r.lastName]);
+    reporterFields.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (spType === 'tourist') {
+    reporterFields.push(['رقم جواز السفر', r.passportNum]);
+    reporterFields.push(['الاسم الكامل', r.lastName]);
+    reporterFields.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
+    if (r.fatherName) reporterFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) reporterFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (spType === 'entity') {
+    reporterFields.push(['اسم الجهة / المؤسسة', r.entityName]);
+  }
+  if (spType !== 'entity') {
+    if (r.gender) reporterFields.push(['الجنس', getGenderLabel(r.gender)]);
+    reporterFields.push(['تاريخ ومكان الميلاد', r.birthDate + ' — ' + r.birthPlace]);
+  }
+  reporterFields.push(['مكان الإقامة', (wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + r.communeResidence]);
+  if (r.addressResidence) reporterFields.push(['العنوان', r.addressResidence]);
+  reporterFields.push(['الهاتف', r.phone]);
+  reporterFields.push(['البريد الإلكتروني', r.email || '—']);
+  reporterFields = reporterFields.filter(f => f && f[1]);
 
   document.getElementById('dv-reporter').innerHTML = reporterFields.map(([lbl, val]) =>
     '<div class="dv-field"><div class="dv-label">' + escHtml(lbl) + '</div>' +
@@ -1360,35 +1397,13 @@ function showPrintStep(d) {
       (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
     ].filter(Boolean).join(' | ');
 
-    // Try native QRCode lib first (canvas→img), then Google Charts API as fallback
-    if (typeof QRCode !== 'undefined') {
-      var tempDiv = document.createElement('div');
-      new QRCode(tempDiv, {
-        text: qrText, width: 90, height: 90,
-        colorDark: '#000', colorLight: '#fff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      setTimeout(function() {
-        var canvas = tempDiv.querySelector('canvas');
-        var img = document.createElement('img');
-        img.width = 90; img.height = 90; img.style.display = 'block';
-        if (canvas) {
-          img.src = canvas.toDataURL('image/png');
-        } else {
-          // canvas blocked → fallback to Charts API
-          img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
-        }
-        qrDiv.appendChild(img);
-        qrRef.textContent = d.reference;
-      }, 200);
-    } else {
-      // No QRCode lib → Google Charts API
-      var img = document.createElement('img');
-      img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
-      img.width = 90; img.height = 90; img.style.display = 'block';
-      qrDiv.appendChild(img);
-      qrRef.textContent = d.reference;
-    }
+    // Use Google Charts API directly — reliable on all browsers
+    var img = document.createElement('img');
+    img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8&chld=M|1';
+    img.width = 90; img.height = 90; img.style.display = 'block';
+    img.alt = 'QR';
+    qrDiv.appendChild(img);
+    qrRef.textContent = d.reference;
   }
 
   // showPrintStep now just opens the print window directly
@@ -1421,17 +1436,42 @@ function fillLegacyPrintArea(d) {
   document.getElementById('print-date-label').textContent =
     'تاريخ الإصدار: ' + now.toLocaleDateString('ar-DZ') + '  ' + now.toLocaleTimeString('ar-DZ');
 
-  document.getElementById('print-reporter').innerHTML =
-    '<div class="print-field"><div class="pf-label">الفئة</div><div class="pf-val">' + escHtml(getUserTypeLabel(r.userType)) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">رقم التعريف</div><div class="pf-val">' + escHtml(r.nin||r.passportNum||r.entityName) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">اللقب والاسم (عربي)</div><div class="pf-val">' + escHtml(r.lastName) + ' ' + escHtml(r.firstName) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">الاسم بالحروف اللاتينية</div><div class="pf-val">' + escHtml(r.lastNameLat) + ' ' + escHtml(r.firstNameLat) + '</div></div>' +
-    (r.fatherName ? '<div class="print-field"><div class="pf-label">اسم ولقب الأب</div><div class="pf-val">' + escHtml(r.fatherName) + '</div></div>' : '') +
-    (r.motherName ? '<div class="print-field"><div class="pf-label">اسم ولقب الأم</div><div class="pf-val">' + escHtml(r.motherName) + '</div></div>' : '') +
-    '<div class="print-field"><div class="pf-label">تاريخ ومكان الميلاد</div><div class="pf-val">' + escHtml(r.birthDate) + ' — ' + escHtml(r.birthPlace) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">مكان الإقامة</div><div class="pf-val">' + escHtml(wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + escHtml(r.communeResidence) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">الهاتف</div><div class="pf-val">' + escHtml(r.phone) + '</div></div>' +
-    '<div class="print-field"><div class="pf-label">البريد الإلكتروني</div><div class="pf-val">' + (escHtml(r.email) || '—') + '</div></div>';
+  // Build reporter HTML based on userType
+  const lgType = r.userType;
+  let lgRows = [];
+  lgRows.push(['الفئة', getUserTypeLabel(lgType)]);
+  if (lgType === 'citizen') {
+    lgRows.push(['رقم التعريف الوطني (NIN)', r.nin]);
+    lgRows.push(['اللقب والاسم (عربي)', (escHtml(r.lastName) + ' ' + escHtml(r.firstName)).trim()]);
+    lgRows.push(['الاسم بالحروف اللاتينية', (escHtml(r.lastNameLat) + ' ' + escHtml(r.firstNameLat)).trim()]);
+    if (r.fatherName) lgRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) lgRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (lgType === 'resident') {
+    lgRows.push(['رقم بطاقة الإقامة', r.passportNum]);
+    lgRows.push(['الاسم الكامل', r.lastName]);
+    lgRows.push(['الاسم بالحروف اللاتينية', (escHtml(r.lastNameLat) + ' ' + escHtml(r.firstNameLat)).trim()]);
+    if (r.fatherName) lgRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) lgRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (lgType === 'tourist') {
+    lgRows.push(['رقم جواز السفر', r.passportNum]);
+    lgRows.push(['الاسم الكامل', r.lastName]);
+    lgRows.push(['الاسم بالحروف اللاتينية', (escHtml(r.lastNameLat) + ' ' + escHtml(r.firstNameLat)).trim()]);
+    if (r.fatherName) lgRows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) lgRows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (lgType === 'entity') {
+    lgRows.push(['اسم الجهة / المؤسسة', r.entityName]);
+  }
+  if (lgType !== 'entity') {
+    lgRows.push(['تاريخ ومكان الميلاد', escHtml(r.birthDate) + ' — ' + escHtml(r.birthPlace)]);
+  }
+  lgRows.push(['مكان الإقامة', escHtml(wilaya ? wilaya.name : r.wilayaResidence) + ' — ' + escHtml(r.communeResidence)]);
+  if (r.addressResidence) lgRows.push(['العنوان', r.addressResidence]);
+  lgRows.push(['الهاتف', r.phone]);
+  lgRows.push(['البريد الإلكتروني', r.email || '—']);
+  lgRows = lgRows.filter(row => row && row[1]);
+  document.getElementById('print-reporter').innerHTML = lgRows.map(([lbl, val]) =>
+    '<div class="print-field"><div class="pf-label">' + escHtml(lbl) + '</div><div class="pf-val">' + escHtml(val) + '</div></div>'
+  ).join('');
 
   const gRow = document.getElementById('print-gender-row');
   const gVal = document.getElementById('print-gender-val');
@@ -1753,7 +1793,7 @@ const DECL_LABELS = {
     labelCirc:    'وصف ظروف الضياع',
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق الضائعة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق الضائعة',
-    printTitle:   'محضر التصريح بضياع الوثائق',
+    printTitle:   'استمارة التصريح بضياع الوثائق',
     printDocs:    'الوثيقة / الوثائق الضائعة',
     printLoss:    'ظروف الضياع',
     placeholderCirc: 'اشرح كيف ضاعت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
@@ -1770,7 +1810,7 @@ const DECL_LABELS = {
     labelCirc:    'وصف ظروف السرقة',
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المسروقة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق المسروقة',
-    printTitle:   'محضر التصريح بسرقة الوثائق',
+    printTitle:   'استمارة التصريح بسرقة الوثائق',
     printDocs:    'الوثيقة / الوثائق المسروقة',
     printLoss:    'ظروف السرقة',
     placeholderCirc: 'اشرح كيف سُرقت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
@@ -1787,7 +1827,7 @@ const DECL_LABELS = {
     labelCirc:    'وصف ظروف الإتلاف',
     oathText:     'أشهد أن جميع المعلومات المقدمة صحيحة وكاملة، وأتعهد بإبلاغ الدرك الوطني فور العثور على الوثيقة / الوثائق المتلفة. <strong>أعلم أن الإدلاء بمعلومات كاذبة يعرضني للمتابعة القانونية.</strong>',
     reporterNature: 'صاحب الوثائق المتلفة',
-    printTitle:   'محضر التصريح بإتلاف الوثائق',
+    printTitle:   'استمارة التصريح بإتلاف الوثائق',
     printDocs:    'الوثيقة / الوثائق المتلفة',
     printLoss:    'ظروف الإتلاف',
     placeholderCirc: 'اشرح كيف تلفت الوثيقة / الوثائق (المكان، الظروف، الوقت التقريبي...)'
