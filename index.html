@@ -170,8 +170,8 @@
         <div class="field" id="nin-field">
           <label for="nin">رقم التعريف الوطني <span class="req">*</span></label>
           <input type="text" id="nin" maxlength="18" placeholder="18 رقم" inputmode="numeric"
-            onblur="validateNIN()" oninput="this.value=this.value.replace(/\D/g,'')">
-          <span class="hint">0 / 18</span>
+            onblur="validateNIN()" oninput="this.value=this.value.replace(/\D/g,'');validateNIN()">
+          <span class="hint" id="nin-counter">0 / 18</span>
           <span class="err-msg">رقم التعريف الوطني يجب أن يتكون من 18 رقم</span>
         </div>
 
@@ -191,14 +191,12 @@
           <label for="lastName">اللقب (بالعربية) <span class="req">*</span></label>
           <input type="text" id="lastName" placeholder="اللقب كما في وثيقة الهوية"
             oninput="enforceArabic(this);validateRequired(this)" onblur="this.value=this.value.trim()">
-          <span class="hint">(مطابق لوثائق الهوية)</span>
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
         <div class="field" id="firstName-field">
           <label for="firstName">الاسم (بالعربية) <span class="req">*</span></label>
           <input type="text" id="firstName" placeholder="الاسم كما في وثيقة الهوية"
             oninput="enforceArabic(this);validateRequired(this)" onblur="this.value=this.value.trim()">
-          <span class="hint">(مطابق لوثائق الهوية)</span>
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
         <div class="field" id="lastNameLat-field">
@@ -220,12 +218,10 @@
         <div class="field" id="fatherName-field">
           <label for="fatherName">اسم ولقب الأب</label>
           <input type="text" id="fatherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
-          <span class="hint">اختياري</span>
         </div>
         <div class="field" id="motherName-field">
           <label for="motherName">اسم ولقب الأم</label>
           <input type="text" id="motherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim()">
-          <span class="hint">اختياري</span>
         </div>
 
         <div class="field">
