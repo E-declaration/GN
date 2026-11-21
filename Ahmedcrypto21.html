@@ -449,7 +449,7 @@
     <div class="login-subtitle">الوصول مقيّد بالمشرفين فقط</div>
     <div class="login-field">
       <label>اسم المستخدم</label>
-      <input type="text" id="login-user" autocomplete="username" placeholder="Ahmedcrypto21" dir="ltr">
+      <input type="text" id="login-user" autocomplete="username" placeholder="" dir="ltr">
     </div>
     <div class="login-field">
       <label>كلمة السر</label>
@@ -832,32 +832,38 @@ function doLogin() {
   if (errEl) errEl.style.display = 'none';
   if (errEmptyEl) errEmptyEl.style.display = 'none';
 
-  const ok = ADMIN_CREDENTIALS.some(c => c.user === user && c.pass === pass);
-  if (ok) {
-    try { sessionStorage.setItem(SESSION_KEY, 'authenticated'); } catch(_) {}
-    isLoggedIn = true;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'block';
+  try {
+    const ok = ADMIN_CREDENTIALS.some(c => c.user.toLowerCase() === user.toLowerCase() && c.pass === pass);
+    if (ok) {
+      try { sessionStorage.setItem(SESSION_KEY, 'authenticated'); } catch(_) {}
+      isLoggedIn = true;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
 
-    if (window._firebaseLoadError) {
-      // Firebase failed — show clear error message
-      document.getElementById('admin-panel').innerHTML =
-        '<div style="padding:40px;text-align:center;font-family:Cairo,sans-serif;color:#c62828;">' +
-        '<p style="font-size:18px;margin-bottom:12px;">⚠️ تعذّر الاتصال بقاعدة البيانات</p>' +
-        '<p style="color:#555;font-size:14px;">يرجى التحقق من الاتصال بالإنترنت ثم إعادة تحميل الصفحة.</p>' +
-        '<button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#1b5e20;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">إعادة التحميل</button>' +
-        '</div>';
+      if (window._firebaseLoadError) {
+        // Firebase failed — show clear error message
+        document.getElementById('admin-panel').innerHTML =
+          '<div style="padding:40px;text-align:center;font-family:Cairo,sans-serif;color:#c62828;">' +
+          '<p style="font-size:18px;margin-bottom:12px;">⚠️ تعذّر الاتصال بقاعدة البيانات</p>' +
+          '<p style="color:#555;font-size:14px;">يرجى التحقق من الاتصال بالإنترنت ثم إعادة تحميل الصفحة.</p>' +
+          '<button onclick="location.reload()" style="margin-top:20px;padding:10px 24px;background:#1b5e20;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">إعادة التحميل</button>' +
+          '</div>';
+      } else {
+        initAdmin();
+      }
+      // don't restore button — login screen is hidden
     } else {
-      initAdmin();
+      if (errEl) errEl.style.display = 'block';
+      if (errEmptyEl) errEmptyEl.style.display = 'none';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-pass').focus();
+      if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'دخول'; }
     }
-    // don't restore button — login screen is hidden
-  } else {
-    if (errEl) errEl.style.display = 'block';
-    if (errEmptyEl) errEmptyEl.style.display = 'none';
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-pass').focus();
-    // restore button only on failure
+  } catch(e) {
+    // ضمان إعادة تفعيل الزر في أي حالة استثنائية حتى لا تتجمد الصفحة
+    console.error('Login error:', e);
     if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'دخول'; }
+    if (errEl) { errEl.textContent = 'حدث خطأ غير متوقع، يرجى إعادة المحاولة'; errEl.style.display = 'block'; }
   }
 }
 
@@ -1816,7 +1822,18 @@ function toggleTheme() {
 // ═══════════════════════════════════════════════════════════
 
 function initAdmin() {
-  initFirebase();
+  const ok = initFirebase();
+  if (!ok) {
+    document.getElementById('list-area').innerHTML = `
+      <div class="empty-box">
+        <span class="material-icons">cloud_off</span>
+        <div>تعذّر الاتصال بقاعدة البيانات.<br>
+        <small style="color:var(--text3)">تحقق من الاتصال بالإنترنت ثم أعد تحميل الصفحة.</small><br><br>
+        <button onclick="location.reload()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;">إعادة المحاولة</button>
+        </div>
+      </div>`;
+    return;
+  }
   loadDeclarations();
   startAutoRefresh();
 }
