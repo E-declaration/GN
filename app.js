@@ -2,7 +2,7 @@
 
 // توليد dataURL من نص باستخدام QRious
 function generateQRDataURL(text, size) {
-  size = size || 120;
+  size = size || 100;
   if (typeof QRious !== 'undefined') {
     try {
       var canvas = document.createElement('canvas');
@@ -22,7 +22,7 @@ function generateQRDataURL(text, size) {
 
 // بناء صورة QR بشكل متزامن أو عبر callback (للعرض في الصفحة)
 function buildQRElement(text, size, callback) {
-  size = size || 120;
+  size = size || 100;
   var dataUrl = generateQRDataURL(text, size);
   if (dataUrl) {
     var img = document.createElement('img');
@@ -42,7 +42,7 @@ function buildQRElement(text, size, callback) {
 
 // بناء HTML لـ QR في صفحة الطباعة — يُضمّن dataURL مباشرة ليظهر دائماً عند الطباعة
 function buildQRHTMLForPrint(text, size, reference) {
-  size = size || 120;
+  size = size || 100;
   var dataUrl = generateQRDataURL(text, size);
   if (dataUrl) {
     return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
@@ -107,7 +107,7 @@ const WILAYAS = [
   {code:"57",name:"عين صالح"},{code:"58",name:"عين قزام"},{code:"59",name:"آفلو"},{code:"60",name:"بريكة"},
   {code:"61",name:"القنطرة"},{code:"62",name:"بئر العاتر"},{code:"63",name:"العريشة"},{code:"64",name:"قصر الشلالة"},
   {code:"65",name:"عين وسارة"},{code:"66",name:"مسعد"},{code:"67",name:"قصر البخاري"},{code:"68",name:"بوسعادة"},
-  {code:"69",name:"الأبيض سيدي الشيخ"}
+  {code:"69",name:"الأبيض سيدي الشيخ"},{code:"70",name:"خارج الوطن"},
 ];
 
 const COMMUNES_BY_WILAYA = {
@@ -179,7 +179,8 @@ const COMMUNES_BY_WILAYA = {
   "66":["أم العظام", "القطارة", "دلدول", "سد الرحال", "سد رحال", "سلمانة", "عمورة", "فيض البطمة", "مسعد"],
   "67":["أم الجليل", "أولاد عنتر", "أولاد معرف", "أولاد هلال", "السانق", "الشهبونية", "العمارية", "العوينات", "الكاف الأخضر", "بوعيش", "بوغار", "بوغزول", "تفراوت", "دراق", "سانڨ", "سيدي دامد", "شلالة العذاورة", "شنيقل", "عزيز", "عين القصير", "عين بوسيف", "قصر البخاري", "مفاتحة"],
   "68":["أمجدل", "أولاد سليمان", "أولاد سيدي إبراهيم", "أولاد سيدي ابراهيم", "أولاد عطية", "أولاد مـاضي", "الحوامد", "الدهاهنة", "الزرزور", "المعاريف", "الهامل", "بلعايبة", "بن سرور", "بنزوه", "بوسعادة", "بوطي السايح", "بير الفضة", "تامسة", "جبل أمساعد", "جبل مساعد", "حمـام الضلعة", "خبانة", "خطوطي سد الجير", "سليم", "سيدي امحمد", "سيدي عامر", "عين الحجل", "عين الريش", "عين الملح", "عين فارس", "محمد بوضياف", "مسيف", "مقرة", "ولتام"],
-  "69":["أربوات", "الأبيض سيدي الشيخ", "الابيض سيدي الشيخ", "البنود", "المهرة", "المھارة", "بوسمغون", "شلالة", "عرباوة", "عين العراك"]
+  "69":["أربوات", "الأبيض سيدي الشيخ", "الابيض سيدي الشيخ", "البنود", "المهرة", "المھارة", "بوسمغون", "شلالة", "عرباوة", "عين العراك"],
+  "70":["خارج الوطن"]
 };
 
 const DOC_TYPES = [
