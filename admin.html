@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-Robots-Tag" content="noindex, nofollow">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <title>لوحة تحكم المطور — GN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --border: #e0e4ea;
+      --primary: #1a2332;
+      --accent: #1a7c3e;
+      --accent2: #27ae60;
+      --text: #1a2332;
+      --text2: #555;
+      --text3: #888;
+      --danger: #c0392b;
+      --warn: #e67e22;
+      --info: #2980b9;
+      --badge-loss: #e8f5e9;
+      --badge-loss-t: #1a7c3e;
+      --badge-theft: #fff3e0;
+      --badge-theft-t: #e67e22;
+      --badge-damage: #fce4ec;
+      --badge-damage-t: #c0392b;
+      --shadow: 0 2px 12px rgba(0,0,0,.08);
+      --radius: 10px;
+    }
+    [data-theme="dark"] {
+      --bg: #0f1520;
+      --card: #1a2332;
+      --border: #2a3a4a;
+      --primary: #e0e8f0;
+      --accent: #2ecc71;
+      --accent2: #27ae60;
+      --text: #e0e8f0;
+      --text2: #a0b0c0;
+      --text3: #607080;
+      --shadow: 0 2px 16px rgba(0,0,0,.35);
+      --badge-loss: #1a3a2a;
+      --badge-loss-t: #2ecc71;
+      --badge-theft: #3a2a0a;
+      --badge-theft-t: #f39c12;
+      --badge-damage: #3a1a1a;
+      --badge-damage-t: #e74c3c;
+    }
+    body {
+      font-family: 'Cairo', Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      direction: rtl;
+      transition: background .3s, color .3s;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .login-card {
+      background: var(--card); border-radius: 16px; padding: 40px 36px;
+      box-shadow: var(--shadow); width: 100%; max-width: 400px; text-align: center;
+    }
+    .login-logo { width: 72px; margin-bottom: 16px; }
+    .login-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .login-subtitle { font-size: 13px; color: var(--text3); margin-bottom: 28px; }
+    .login-field {
+      display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: right;
+    }
+    .login-field label { font-size: 13px; font-weight: 600; color: var(--text2); }
+    .login-field input {
+      padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: 14px; background: var(--bg); color: var(--text);
+      outline: none; transition: border-color .2s;
+      direction: ltr; text-align: left;
+    }
+    .login-field input:focus { border-color: var(--accent); }
+    .login-btn {
+      width: 100%; padding: 12px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-family: inherit; font-size: 15px;
+      font-weight: 700; cursor: pointer; transition: background .2s; margin-top: 8px;
+    }
+    .login-btn:hover { background: var(--accent2); }
+    .login-err {
+      background: #fce4ec; color: var(--danger); border-radius: 8px;
+      padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none;
+    }
+    .login-hint {
+      font-size: 11px; color: var(--text3); margin-top: 16px;
+      border-top: 1px solid var(--border); padding-top: 12px;
+    }
+
+    /* ===== ADMIN PANEL ===== */
+    #admin-panel { display: none; }
+
+    /* Header */
+    .admin-header {
+      background: var(--primary); color: #fff; padding: 0 24px;
+      display: flex; align-items: center; gap: 16px; height: 60px;
+      position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    .admin-header img { width: 36px; }
+    .admin-header h1 { font-size: 16px; font-weight: 700; flex: 1; }
+    .admin-header .header-actions { display: flex; align-items: center; gap: 8px; }
+    .hbtn {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2);
+      border-radius: 7px; padding: 6px 12px; font-family: inherit; font-size: 13px;
+      cursor: pointer; transition: background .2s; white-space: nowrap;
+    }
+    .hbtn:hover { background: rgba(255,255,255,.22); }
+    .hbtn.logout { background: rgba(192,57,43,.3); border-color: rgba(192,57,43,.5); }
+    .hbtn.logout:hover { background: rgba(192,57,43,.5); }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 12px; padding: 16px 24px; flex-wrap: wrap;
+      background: var(--card); border-bottom: 1px solid var(--border);
+    }
+    .stat-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg); border-radius: 8px; padding: 8px 14px;
+      font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    .stat-pill .stat-num { font-size: 20px; font-weight: 900; color: var(--accent); }
+    .stat-pill.theft .stat-num { color: var(--warn); }
+    .stat-pill.damage .stat-num { color: var(--danger); }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 24px; background: var(--card);
+      border-bottom: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .toolbar input[type="search"] {
+      flex: 1; min-width: 200px; padding: 9px 14px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: 13px; background: var(--bg); color: var(--text);
+      outline: none; transition: border-color .2s;
+    }
+    .toolbar input[type="search"]:focus { border-color: var(--accent); }
+    .toolbar select {
+      padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: 13px; background: var(--bg); color: var(--text);
+      outline: none; cursor: pointer;
+    }
+    .tbtn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 9px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px;
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .tbtn:hover { border-color: var(--accent); color: var(--accent); }
+    .tbtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tbtn .material-icons { font-size: 16px; }
+
+    /* Content */
+    .admin-content { padding: 20px 24px; }
+
+    /* Loading */
+    .loading-box {
+      text-align: center; padding: 60px; color: var(--text3); font-size: 15px;
+    }
+    .spinner-ring {
+      display: inline-block; width: 36px; height: 36px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty */
+    .empty-box {
+      text-align: center; padding: 60px; color: var(--text3);
+    }
+    .empty-box .material-icons { font-size: 48px; display: block; margin-bottom: 12px; opacity: .4; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow); }
+    table {
+      width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px;
+    }
+    thead tr { background: var(--primary); color: #fff; }
+    thead th {
+      padding: 12px 14px; text-align: right; font-weight: 600;
+      white-space: nowrap; font-size: 12px; letter-spacing: .3px;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border); transition: background .15s; cursor: pointer;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(26,124,62,.05); }
+    tbody td {
+      padding: 11px 14px; color: var(--text); vertical-align: middle;
+      white-space: nowrap;
+    }
+    .ref-code {
+      font-family: monospace; font-size: 12px; font-weight: 700;
+      color: var(--accent); letter-spacing: .5px;
+    }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700;
+    }
+    .badge-loss { background: var(--badge-loss); color: var(--badge-loss-t); }
+    .badge-theft { background: var(--badge-theft); color: var(--badge-theft-t); }
+    .badge-damage { background: var(--badge-damage); color: var(--badge-damage-t); }
+
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 10px; border-radius: 6px; border: 1.5px solid var(--border);
+      background: var(--bg); color: var(--text); font-family: inherit; font-size: 12px;
+      cursor: pointer; transition: all .15s; text-decoration: none;
+    }
+    .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .action-btn .material-icons { font-size: 15px; }
+    .action-btn.print-btn { border-color: var(--accent); color: var(--accent); }
+    .action-btn.print-btn:hover { background: var(--accent); color: #fff; }
+
+    /* Modal / Detail overlay */
+    .detail-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      z-index: 1000; align-items: flex-start; justify-content: center;
+      padding: 20px; overflow-y: auto;
+    }
+    .detail-overlay.open { display: flex; }
+    .detail-modal {
+      background: var(--card); border-radius: 16px; width: 100%; max-width: 860px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.3); margin: auto; overflow: hidden;
+    }
+    .detail-header {
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+    }
+    .detail-header h2 { flex: 1; font-size: 16px; font-weight: 700; }
+    .detail-close {
+      background: rgba(255,255,255,.12); color: #fff; border: none;
+      border-radius: 7px; padding: 6px 10px; cursor: pointer; font-size: 20px;
+      display: flex; align-items: center; transition: background .2s;
+    }
+    .detail-close:hover { background: rgba(255,255,255,.25); }
+    .detail-toolbar {
+      background: rgba(26,124,62,.07); border-bottom: 1px solid var(--border);
+      padding: 12px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    }
+    .detail-body { padding: 20px; }
+
+    /* Declaration preview (same as user) */
+    .decl-preview {
+      max-width: 760px; margin: 0 auto;
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .decl-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 3px double var(--primary); padding: 14px 16px;
+      background: var(--card);
+    }
+    .decl-hdr img { width: 60px; }
+    .decl-titles { text-align: center; font-size: 12px; line-height: 1.6; color: var(--text); }
+    .decl-titles h2 { font-size: 14px; font-weight: 900; color: var(--primary); margin-top: 4px; }
+    .ref-box-preview {
+      text-align: center; border: 2px solid var(--primary); border-radius: 8px;
+      padding: 10px; margin: 14px 16px;
+    }
+    .ref-num-preview { font-size: 22px; font-weight: 900; letter-spacing: 1px; font-family: monospace; color: var(--accent); }
+    .ref-date-preview { font-size: 11px; color: var(--text3); margin-top: 4px; }
+    .decl-section { margin: 0 16px 14px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .decl-section-h { background: var(--primary); color: #fff; padding: 8px 12px; font-size: 12px; font-weight: 700; margin: 0; }
+    .decl-section-body { padding: 10px 12px; }
+    .dv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+    @media (max-width: 500px) { .dv-grid { grid-template-columns: 1fr; } }
+    .dv-field { background: var(--bg); border-radius: 5px; padding: 7px 10px; }
+    .dv-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+    .dv-val { font-size: 12px; font-weight: 600; color: var(--text); }
+    .doc-box-preview {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 10px; margin-bottom: 8px;
+    }
+    .doc-box-preview:last-child { margin-bottom: 0; }
+    .doc-box-title { font-weight: 700; margin-bottom: 7px; font-size: 12px; color: var(--text); }
+    .circumstances-box {
+      font-size: 12px; border: 1px solid var(--border); padding: 10px;
+      min-height: 48px; border-radius: 5px; margin-top: 8px; color: var(--text);
+      background: var(--bg); line-height: 1.6;
+    }
+    .decl-footer-preview {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin: 14px 16px; border-top: 2px solid var(--primary); padding-top: 14px;
+    }
+    .sig-box { text-align: center; width: 130px; }
+    .sig-label { font-size: 11px; color: var(--text3); margin-bottom: 36px; }
+    .sig-line { border-top: 1px solid var(--text3); width: 100px; margin: 0 auto; }
+    .qr-preview-box { text-align: center; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 16px; flex-wrap: wrap;
+    }
+    .page-btn {
+      padding: 6px 12px; border: 1.5px solid var(--border); border-radius: 7px;
+      background: var(--card); color: var(--text); font-family: inherit;
+      font-size: 13px; cursor: pointer; transition: all .15s;
+    }
+    .page-btn:hover, .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: .4; cursor: default; }
+    .page-info { font-size: 12px; color: var(--text3); padding: 0 8px; }
+
+    /* Notification */
+    .notif {
+      position: fixed; bottom: 20px; left: 20px; right: 20px; max-width: 400px;
+      margin: 0 auto; background: var(--accent); color: #fff;
+      border-radius: 10px; padding: 14px 18px; font-size: 13px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25); z-index: 9999;
+      display: none; align-items: center; gap: 10px;
+    }
+    .notif.show { display: flex; }
+    .notif.error { background: var(--danger); }
+    .notif .material-icons { font-size: 18px; }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .admin-header h1 { font-size: 13px; }
+      .admin-content { padding: 12px; }
+      .toolbar { padding: 10px 12px; }
+      .stats-bar { padding: 10px 12px; }
+      thead th:nth-child(4), tbody td:nth-child(4),
+      thead th:nth-child(5), tbody td:nth-child(5) { display: none; }
+    }
+
+    /* Print declaration window */
+    @media print {
+      #admin-panel, #login-screen { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen">
+  <div class="login-card">
+    <img src="logo_gn.png" class="login-logo" alt="GN">
+    <div class="login-title">لوحة تحكم المطور</div>
+    <div class="login-subtitle">E-declaration GN — وصول مقيّد</div>
+    <div class="login-field">
+      <label>اسم المستخدم</label>
+      <input type="text" id="login-user" autocomplete="username" placeholder="admin" dir="ltr">
+    </div>
+    <div class="login-field">
+      <label>كلمة السر</label>
+      <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" dir="ltr"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">دخول</button>
+    <div class="login-err" id="login-err">اسم المستخدم أو كلمة السر غير صحيحة</div>
+    <div class="login-hint">🔒 هذه الصفحة مخصصة للمطور فقط ولا تظهر للمستخدمين العاديين</div>
+  </div>
+</div>
+
+<!-- ===== ADMIN PANEL ===== -->
+<div id="admin-panel">
+
+  <!-- Header -->
+  <div class="admin-header">
+    <img src="logo_gn.png" alt="GN">
+    <h1>لوحة تحكم المطور — التصريحات الواردة</h1>
+    <div class="header-actions">
+      <button class="hbtn" onclick="toggleTheme()" id="theme-btn">
+        <span class="material-icons" style="font-size:15px">dark_mode</span>
+        <span id="theme-label">داكن</span>
+      </button>
+      <button class="hbtn" onclick="loadDeclarations()">
+        <span class="material-icons" style="font-size:15px">refresh</span>
+        تحديث
+      </button>
+      <button class="hbtn logout" onclick="doLogout()">
+        <span class="material-icons" style="font-size:15px">logout</span>
+        خروج
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-pill">
+      <span class="material-icons" style="font-size:18px;color:var(--accent)">description</span>
+      الكل: <span class="stat-num" id="stat-total">—</span>
+    </div>
+    <div class="stat-pill">
+      <span class="material-icons" style="font-size:18px;color:var(--badge-loss-t)">search_off</span>
+      ضياع: <span class="stat-num" id="stat-loss">—</span>
+    </div>
+    <div class="stat-pill theft">
+      <span class="material-icons" style="font-size:18px;color:var(--warn)">gpp_bad</span>
+      سرقة: <span class="stat-num" id="stat-theft">—</span>
+    </div>
+    <div class="stat-pill damage">
+      <span class="material-icons" style="font-size:18px;color:var(--danger)">broken_image</span>
+      إتلاف: <span class="stat-num" id="stat-damage">—</span>
+    </div>
+    <div class="stat-pill" style="margin-right:auto">
+      <span class="material-icons" style="font-size:18px;color:var(--text3)">schedule</span>
+      آخر تحديث: <span id="stat-time" style="font-size:12px;color:var(--text3)">—</span>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input type="search" id="search-input" placeholder="🔍  بحث بالمرجع، الاسم، رقم NIN..." oninput="applyFilters()">
+    <select id="filter-type" onchange="applyFilters()">
+      <option value="">كل الأنواع</option>
+      <option value="loss">ضياع</option>
+      <option value="theft">سرقة</option>
+      <option value="damage">إتلاف</option>
+    </select>
+    <select id="filter-wilaya" onchange="applyFilters()">
+      <option value="">كل الولايات</option>
+    </select>
+    <select id="sort-by" onchange="applyFilters()">
+      <option value="newest">الأحدث أولاً</option>
+      <option value="oldest">الأقدم أولاً</option>
+      <option value="ref">المرجع</option>
+    </select>
+    <button class="tbtn" onclick="exportCSV()">
+      <span class="material-icons">download</span> تصدير CSV
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="admin-content">
+    <div id="list-area">
+      <div class="loading-box">
+        <div class="spinner-ring"></div>
+        <div>جار تحميل التصريحات...</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /admin-panel -->
+
+<!-- ===== DETAIL OVERLAY ===== -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-modal" onclick="event.stopPropagation()">
+    <div class="detail-header">
+      <span class="material-icons">description</span>
+      <h2 id="detail-title">تفاصيل التصريح</h2>
+      <button class="detail-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="detail-toolbar">
+      <button class="action-btn print-btn" onclick="printCurrentDetail()">
+        <span class="material-icons">print</span> طباعة / PDF
+      </button>
+      <button class="action-btn" onclick="closeDetail()">
+        <span class="material-icons">close</span> إغلاق
+      </button>
+      <span style="margin-right:auto;font-size:12px;color:var(--text3)" id="detail-ref-label"></span>
+    </div>
+    <div class="detail-body" id="detail-body">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notif" id="notif">
+  <span class="material-icons" id="notif-icon">check_circle</span>
+  <span id="notif-msg"></span>
+</div>
+
+<!-- ===== FIREBASE + QR ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  ADMIN CONFIG — غيّر هذه القيم
+// ═══════════════════════════════════════════════════════════
+
+// بيانات تسجيل الدخول — قم بتغيير كلمة السر قبل النشر
+const ADMIN_CREDENTIALS = [
+  { user: 'dev', pass: 'GN@admin2025!' },
+  // يمكنك إضافة حسابات إضافية هنا
+  // { user: 'admin2', pass: 'pass2' }
+];
+
+// مفاتيح Firebase (نفسها المستخدمة في التطبيق الرئيسي)
+// إذا لم تكن قد نشرت firebase بعد في index.html، أضف هنا مفاتيحك
+// هذا الكود سيحاول استخدام التهيئة الموجودة أو إنشاء جديدة
+const FIREBASE_CONFIG = null; // null = يستخدم firebase الموجود في الصفحة الرئيسية
+// أو ضع مفاتيحك مباشرة:
+// const FIREBASE_CONFIG = {
+//   apiKey: "...", authDomain: "...", projectId: "...",
+//   storageBucket: "...", messagingSenderId: "...", appId: "..."
+// };
+
+// اسم collection التصريحات
+const COLLECTION_NAME = 'declarations';
+
+// عدد التصريحات في الصفحة الواحدة
+const PAGE_SIZE = 20;
+
+// ═══════════════════════════════════════════════════════════
+//  SESSION
+// ═══════════════════════════════════════════════════════════
+
+const SESSION_KEY = 'gn_admin_session';
+let isLoggedIn = false;
+
+function checkSession() {
+  try {
+    const s = sessionStorage.getItem(SESSION_KEY);
+    if (s === 'authenticated') return true;
+  } catch(_) {}
+  return false;
+}
+
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const ok = ADMIN_CREDENTIALS.some(c => c.user === user && c.pass === pass);
+  if (ok) {
+    try { sessionStorage.setItem(SESSION_KEY, 'authenticated'); } catch(_) {}
+    isLoggedIn = true;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    errEl.style.display = 'none';
+    initAdmin();
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function doLogout() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(_) {}
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WILAYAS (نفس القائمة من التطبيق الأصلي — مختصرة)
+// ═══════════════════════════════════════════════════════════
+
+const WILAYAS = [
+  {code:"01",name:"أدرار"},{code:"02",name:"الشلف"},{code:"03",name:"الأغواط"},{code:"04",name:"أم البواقي"},
+  {code:"05",name:"باتنة"},{code:"06",name:"بجاية"},{code:"07",name:"بسكرة"},{code:"08",name:"بشار"},
+  {code:"09",name:"البليدة"},{code:"10",name:"البويرة"},{code:"11",name:"تمنراست"},{code:"12",name:"تبسة"},
+  {code:"13",name:"تلمسان"},{code:"14",name:"تيارت"},{code:"15",name:"تيزي وزو"},{code:"16",name:"الجزائر"},
+  {code:"17",name:"الجلفة"},{code:"18",name:"جيجل"},{code:"19",name:"سطيف"},{code:"20",name:"سعيدة"},
+  {code:"21",name:"سكيكدة"},{code:"22",name:"سيدي بلعباس"},{code:"23",name:"عنابة"},{code:"24",name:"قالمة"},
+  {code:"25",name:"قسنطينة"},{code:"26",name:"المدية"},{code:"27",name:"مستغانم"},{code:"28",name:"المسيلة"},
+  {code:"29",name:"معسكر"},{code:"30",name:"ورقلة"},{code:"31",name:"وهران"},{code:"32",name:"البيض"},
+  {code:"33",name:"إليزي"},{code:"34",name:"برج بوعريريج"},{code:"35",name:"بومرداس"},{code:"36",name:"الطارف"},
+  {code:"37",name:"تندوف"},{code:"38",name:"تيسمسيلت"},{code:"39",name:"الوادي"},{code:"40",name:"خنشلة"},
+  {code:"41",name:"سوق أهراس"},{code:"42",name:"تيبازة"},{code:"43",name:"ميلة"},{code:"44",name:"عين الدفلى"},
+  {code:"45",name:"النعامة"},{code:"46",name:"عين تموشنت"},{code:"47",name:"غرداية"},{code:"48",name:"غليزان"},
+  {code:"49",name:"المغير"},{code:"50",name:"المنيعة"},{code:"51",name:"أولاد جلال"},{code:"52",name:"برج باجي مختار"},
+  {code:"53",name:"بني عباس"},{code:"54",name:"تيميمون"},{code:"55",name:"تقرت"},{code:"56",name:"جانت"},
+  {code:"57",name:"عين صالح"},{code:"58",name:"عين قزام"},{code:"59",name:"آفلو"},{code:"60",name:"بريكة"},
+  {code:"61",name:"القنطرة"},{code:"62",name:"بئر العاتر"},{code:"63",name:"العريشة"},{code:"64",name:"قصر الشلالة"},
+  {code:"65",name:"عين وسارة"},{code:"66",name:"مسعد"},{code:"67",name:"قصر البخاري"},{code:"68",name:"بوسعادة"},
+  {code:"69",name:"الأبيض سيدي الشيخ"}
+];
+
+function wilayaName(code) {
+  const w = WILAYAS.find(x => x.code === code);
+  return w ? w.name : code;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FIREBASE INIT
+// ═══════════════════════════════════════════════════════════
+
+let db = null;
+
+function initFirebase() {
+  try {
+    // استخدم firebase الموجود إن وجد
+    if (typeof firebase !== 'undefined') {
+      let app;
+      try {
+        app = firebase.app();
+      } catch(e) {
+        if (FIREBASE_CONFIG) {
+          app = firebase.initializeApp(FIREBASE_CONFIG);
+        } else {
+          showNotif('⚠️ لم يتم ضبط Firebase. أضف مفاتيحك في FIREBASE_CONFIG', true);
+          return false;
+        }
+      }
+      db = firebase.firestore(app);
+      return true;
+    } else {
+      showNotif('⚠️ مكتبة Firebase غير محملة', true);
+      return false;
+    }
+  } catch(e) {
+    showNotif('خطأ في تهيئة Firebase: ' + e.message, true);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════
+
+let allDeclarations = [];
+let filteredDeclarations = [];
+let currentPage = 1;
+let currentDetail = null;
+
+async function loadDeclarations() {
+  document.getElementById('list-area').innerHTML = `
+    <div class="loading-box">
+      <div class="spinner-ring"></div>
+      <div>جار تحميل التصريحات...</div>
+    </div>`;
+
+  if (!db) {
+    document.getElementById('list-area').innerHTML = `
+      <div class="empty-box">
+        <span class="material-icons">cloud_off</span>
+        <div>قاعدة البيانات غير متاحة.<br>تحقق من إعدادات Firebase.</div>
+      </div>`;
+    return;
+  }
+
+  try {
+    const snapshot = await db.collection(COLLECTION_NAME)
+      .orderBy('createdAt', 'desc')
+      .limit(500)
+      .get();
+
+    allDeclarations = [];
+    snapshot.forEach(doc => {
+      allDeclarations.push({ id: doc.id, ...doc.data() });
+    });
+
+    updateStats();
+    populateWilayaFilter();
+    applyFilters();
+
+    document.getElementById('stat-time').textContent =
+      new Date().toLocaleTimeString('ar-DZ');
+
+  } catch(e) {
+    console.error(e);
+    document.getElementById('list-area').innerHTML = `
+      <div class="empty-box">
+        <span class="material-icons">error_outline</span>
+        <div>فشل تحميل البيانات.<br><small style="color:var(--text3)">${escHtml(e.message)}</small></div>
+      </div>`;
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allDeclarations.length;
+  document.getElementById('stat-loss').textContent   = allDeclarations.filter(d => d.declarationType === 'loss').length;
+  document.getElementById('stat-theft').textContent  = allDeclarations.filter(d => d.declarationType === 'theft').length;
+  document.getElementById('stat-damage').textContent = allDeclarations.filter(d => d.declarationType === 'damage').length;
+}
+
+function populateWilayaFilter() {
+  const sel = document.getElementById('filter-wilaya');
+  const codes = [...new Set(allDeclarations.map(d => d.reporter?.wilayaResidence).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">كل الولايات</option>';
+  codes.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = `${c} - ${wilayaName(c)}`;
+    sel.appendChild(opt);
+  });
+}
+
+function applyFilters() {
+  const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  const typeF = document.getElementById('filter-type').value;
+  const wilayaF = document.getElementById('filter-wilaya').value;
+  const sortBy = document.getElementById('sort-by').value;
+
+  filteredDeclarations = allDeclarations.filter(d => {
+    if (typeF && d.declarationType !== typeF) return false;
+    if (wilayaF && d.reporter?.wilayaResidence !== wilayaF) return false;
+    if (q) {
+      const haystack = [
+        d.reference, d.reporter?.nin, d.reporter?.passportNum,
+        d.reporter?.lastName, d.reporter?.firstName, d.reporter?.entityName,
+        d.reporter?.lastNameLat, d.reporter?.firstNameLat,
+        d.reporter?.phone, d.reporter?.email,
+        ...(d.documents || []).map(x => x.number)
+      ].join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  filteredDeclarations.sort((a, b) => {
+    if (sortBy === 'newest') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+    if (sortBy === 'oldest') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+    if (sortBy === 'ref') return (a.reference || '').localeCompare(b.reference || '');
+    return 0;
+  });
+
+  currentPage = 1;
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════════════
+
+function renderTable() {
+  const area = document.getElementById('list-area');
+
+  if (filteredDeclarations.length === 0) {
+    area.innerHTML = `
+      <div class="empty-box">
+        <span class="material-icons">inbox</span>
+        <div>لا توجد تصريحات مطابقة</div>
+      </div>`;
+    return;
+  }
+
+  const totalPages = Math.ceil(filteredDeclarations.length / PAGE_SIZE);
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredDeclarations.slice(startIdx, startIdx + PAGE_SIZE);
+
+  const DECL_BADGE = {
+    loss: '<span class="badge badge-loss">ضياع</span>',
+    theft: '<span class="badge badge-theft">سرقة</span>',
+    damage: '<span class="badge badge-damage">إتلاف</span>',
+  };
+
+  const rows = pageData.map((d, idx) => {
+    const r = d.reporter || {};
+    const name = [r.firstName, r.lastName].filter(Boolean).join(' ') || r.entityName || '—';
+    const id = r.nin || r.passportNum || '—';
+    const dateStr = d.createdAt?.toDate
+      ? d.createdAt.toDate().toLocaleDateString('ar-DZ')
+      : (d.submittedAt ? new Date(d.submittedAt).toLocaleDateString('ar-DZ') : '—');
+    const badge = DECL_BADGE[d.declarationType] || `<span class="badge">${escHtml(d.declarationType)}</span>`;
+
+    return `<tr onclick="openDetail(${startIdx + idx})" title="انقر لعرض التصريح">
+      <td><span class="ref-code">${escHtml(d.reference || d.id)}</span></td>
+      <td>${badge}</td>
+      <td>${escHtml(name)}</td>
+      <td>${escHtml(id)}</td>
+      <td>${escHtml(r.phone || '—')}</td>
+      <td>${escHtml(wilayaName(r.wilayaResidence) || '—')}</td>
+      <td>${escHtml(dateStr)}</td>
+      <td onclick="event.stopPropagation()">
+        <button class="action-btn print-btn" onclick="openDetailAndPrint(${startIdx + idx})">
+          <span class="material-icons">print</span> طباعة
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  let paginationHTML = '';
+  if (totalPages > 1) {
+    paginationHTML = `<div class="pagination">
+      <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>
+        <span class="material-icons" style="font-size:16px">chevron_right</span>
+      </button>`;
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) {
+        paginationHTML += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+      } else if (Math.abs(i - currentPage) === 3) {
+        paginationHTML += `<span class="page-info">…</span>`;
+      }
+    }
+    paginationHTML += `
+      <button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>
+        <span class="material-icons" style="font-size:16px">chevron_left</span>
+      </button>
+      <span class="page-info">صفحة ${currentPage} من ${totalPages} — ${filteredDeclarations.length} تصريح</span>
+    </div>`;
+  }
+
+  area.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>المرجع</th>
+            <th>النوع</th>
+            <th>الاسم</th>
+            <th>الرقم التعريفي</th>
+            <th>الهاتف</th>
+            <th>الولاية</th>
+            <th>التاريخ</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${paginationHTML}`;
+}
+
+function goPage(n) {
+  const total = Math.ceil(filteredDeclarations.length / PAGE_SIZE);
+  if (n < 1 || n > total) return;
+  currentPage = n;
+  renderTable();
+  document.querySelector('.admin-content').scrollTop = 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DETAIL / PRINT
+// ═══════════════════════════════════════════════════════════
+
+const DECL_LABELS = {
+  loss:   { title: 'استمارة التصريح بضياع الوثائق', docs: 'الوثيقة / الوثائق الضائعة', loss: 'ظروف الضياع', labelDate: 'تاريخ الضياع', labelWilaya: 'مكان الضياع' },
+  theft:  { title: 'استمارة التصريح بسرقة الوثائق', docs: 'الوثيقة / الوثائق المسروقة', loss: 'ظروف السرقة', labelDate: 'تاريخ السرقة', labelWilaya: 'مكان السرقة' },
+  damage: { title: 'استمارة التصريح بإتلاف الوثائق', docs: 'الوثيقة / الوثائق المتلفة', loss: 'ظروف الإتلاف', labelDate: 'تاريخ الإتلاف', labelWilaya: 'مكان الإتلاف' },
+};
+
+function getUserTypeLabel(t) {
+  return { citizen:'مواطن جزائري', resident:'مقيم أجنبي', entity:'شخص معنوي', tourist:'سائح أجنبي' }[t] || t;
+}
+
+function getGenderLabel(v) {
+  return { male:'ذكر', female:'أنثى', other:'آخر' }[v] || v;
+}
+
+function openDetail(idx) {
+  currentDetail = filteredDeclarations[idx];
+  if (!currentDetail) return;
+
+  document.getElementById('detail-title').textContent = 'تصريح: ' + (currentDetail.reference || currentDetail.id);
+  document.getElementById('detail-ref-label').textContent = currentDetail.reference || currentDetail.id;
+  document.getElementById('detail-body').innerHTML = buildDeclarationHTML(currentDetail, false);
+
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function openDetailAndPrint(idx) {
+  openDetail(idx);
+  setTimeout(printCurrentDetail, 300);
+}
+
+function closeDetail(e) {
+  if (e && e.target !== document.getElementById('detail-overlay')) return;
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentDetail = null;
+}
+
+function printCurrentDetail() {
+  if (!currentDetail) return;
+  const html = buildPrintHTML(currentDetail);
+  const pw = window.open('', '_blank', 'width=900,height=700');
+  if (!pw) {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return;
+  }
+  pw.document.open();
+  pw.document.write(html);
+  pw.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILD DECLARATION HTML (for detail panel)
+// ═══════════════════════════════════════════════════════════
+
+function buildDeclarationHTML(d, forPrint) {
+  if (!d) return '';
+  const r = d.reporter || {};
+  const DL = DECL_LABELS[d.declarationType] || DECL_LABELS.loss;
+  const lossWilaya = WILAYAS.find(w => w.code === d.loss?.wilaya);
+  const resWilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
+  const dateStr = d.createdAt?.toDate
+    ? d.createdAt.toDate().toLocaleString('ar-DZ')
+    : (d.submittedAt ? new Date(d.submittedAt).toLocaleString('ar-DZ') : '—');
+
+  // Reporter fields
+  const uType = r.userType || 'citizen';
+  let rFields = [['الفئة', getUserTypeLabel(uType)]];
+  if (uType === 'citizen') {
+    rFields.push(['رقم التعريف الوطني (NIN)', r.nin]);
+    rFields.push(['اللقب والاسم (عربي)', [r.lastName, r.firstName].filter(Boolean).join(' ')]);
+    rFields.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'resident') {
+    rFields.push(['رقم بطاقة الإقامة', r.passportNum]);
+    rFields.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) rFields.push(['الجنسية', r.nationality]);
+    rFields.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'tourist') {
+    rFields.push(['رقم جواز السفر', r.passportNum]);
+    rFields.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) rFields.push(['الجنسية', r.nationality]);
+    rFields.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rFields.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rFields.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'entity') {
+    rFields.push(['اسم الجهة / المؤسسة', r.entityName]);
+  }
+  if (uType !== 'entity') {
+    if (r.gender) rFields.push(['الجنس', getGenderLabel(r.gender)]);
+    if (r.birthDate) rFields.push(['تاريخ ومكان الميلاد', r.birthDate + (r.birthPlace ? ' — ' + r.birthPlace : '')]);
+  }
+  rFields.push(['مكان الإقامة', (resWilaya ? resWilaya.name : r.wilayaResidence) + (r.communeResidence ? ' — ' + r.communeResidence : '')]);
+  if (r.addressResidence) rFields.push(['العنوان', r.addressResidence]);
+  rFields.push(['الهاتف', r.phone]);
+  rFields.push(['البريد الإلكتروني', r.email || '—']);
+  rFields = rFields.filter(f => f[1]);
+
+  const reporterHTML = rFields.map(([lbl, val]) =>
+    `<div class="dv-field"><div class="dv-label">${escHtml(lbl)}</div><div class="dv-val">${escHtml(val || '—')}</div></div>`
+  ).join('');
+
+  // Documents
+  const docsHTML = (d.documents || []).map((doc, i) => `
+    <div class="doc-box-preview">
+      <div class="doc-box-title">الوثيقة ${i+1}: ${escHtml(doc.type)}</div>
+      <div class="dv-grid">
+        <div class="dv-field"><div class="dv-label">رقم الوثيقة</div><div class="dv-val">${escHtml(doc.number)}</div></div>
+        <div class="dv-field"><div class="dv-label">تاريخ الإصدار</div><div class="dv-val">${escHtml(doc.issueDate || '—')}</div></div>
+        <div class="dv-field"><div class="dv-label">تاريخ الانتهاء</div><div class="dv-val">${escHtml(doc.expDate || '—')}</div></div>
+        <div class="dv-field"><div class="dv-label">جهة الإصدار</div><div class="dv-val">${escHtml(doc.authority || '—')}</div></div>
+      </div>
+    </div>`).join('');
+
+  // QR
+  const qrId = 'qr-' + (d.reference || Math.random().toString(36).slice(2));
+  let qrHTML = '';
+  if (!forPrint) {
+    // QR rendered via canvas after mount
+    qrHTML = `<canvas id="${qrId}" style="display:block;margin:0 auto"></canvas>
+      <div style="font-size:9px;color:var(--text3);margin-top:3px;text-align:center;font-family:monospace">${escHtml(d.reference||'')}</div>`;
+  }
+
+  const html = `
+    <div class="decl-preview">
+      <div class="decl-hdr">
+        <img src="logo_gn.png" class="decl-hdr-logo" alt="GN" style="width:55px">
+        <div class="decl-titles">
+          <div>الجمهورية الجزائرية الديمقراطية الشعبية</div>
+          <div>وزارة الدفاع الوطني</div>
+          <div><strong>قيادة الدرك الوطني</strong></div>
+          <h2>${escHtml(DL.title)}</h2>
+        </div>
+        <img src="logo_gn.png" class="decl-hdr-logo" alt="GN" style="width:55px">
+      </div>
+
+      <div class="ref-box-preview">
+        <div class="ref-num-preview">${escHtml(d.reference || d.id)}</div>
+        <div class="ref-date-preview">تاريخ الإصدار: ${escHtml(dateStr)}</div>
+      </div>
+
+      <div class="decl-section">
+        <h3 class="decl-section-h">معلومات المصرّح</h3>
+        <div class="decl-section-body"><div class="dv-grid">${reporterHTML}</div></div>
+      </div>
+
+      <div class="decl-section">
+        <h3 class="decl-section-h">${escHtml(DL.docs)}</h3>
+        <div class="decl-section-body">${docsHTML}</div>
+      </div>
+
+      <div class="decl-section">
+        <h3 class="decl-section-h">${escHtml(DL.loss)}</h3>
+        <div class="decl-section-body">
+          <div class="dv-grid">
+            <div class="dv-field"><div class="dv-label">${escHtml(DL.labelDate)}</div><div class="dv-val">${escHtml(d.loss?.date || '—')}</div></div>
+            <div class="dv-field"><div class="dv-label">${escHtml(DL.labelWilaya)}</div><div class="dv-val">${escHtml((lossWilaya ? lossWilaya.name : d.loss?.wilaya) + (d.loss?.commune ? ' — ' + d.loss.commune : ''))}</div></div>
+          </div>
+          <div class="dv-label" style="margin-top:8px;font-size:10px">الوصف:</div>
+          <div class="circumstances-box">${escHtml(d.loss?.circumstances || '—')}</div>
+        </div>
+      </div>
+
+      <div class="decl-footer-preview">
+        <div class="sig-box"><div class="sig-label">الامضاء</div><div class="sig-line"></div></div>
+        <div class="qr-preview-box">${qrHTML}</div>
+        <div class="sig-box"><div class="sig-label">الختم</div><div class="sig-line"></div></div>
+      </div>
+    </div>`;
+
+  // Render QR after a tick
+  if (!forPrint) {
+    setTimeout(() => {
+      const canvas = document.getElementById(qrId);
+      if (canvas && typeof QRious !== 'undefined' && d.reference) {
+        try {
+          const r2 = d.reporter || {};
+          const typeMap = { loss:'LOSS', theft:'THEFT', damage:'DAMAGE' };
+          const qrText = [
+            'REF:' + d.reference,
+            'TYPE:' + (typeMap[d.declarationType] || ''),
+            'NOM:' + ((r2.lastName || '') + ' ' + (r2.firstName || '')).trim().replace(/[^\x20-\x7E]/g,''),
+            'NIN:' + (r2.nin || r2.passportNum || ''),
+            'DATE:' + (d.loss?.date || ''),
+            'WILAYA:' + (d.loss?.wilaya || '')
+          ].filter(x => x.split(':')[1]).join('\n');
+          new QRious({ element: canvas, value: qrText, size: 90, level: 'M' });
+        } catch(e) {}
+      }
+    }, 50);
+  }
+
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILD PRINT HTML (identical to main app)
+// ═══════════════════════════════════════════════════════════
+
+function buildPrintHTML(d) {
+  if (!d) return '';
+  const r = d.reporter || {};
+  const now = new Date();
+  const dateStr = d.createdAt?.toDate
+    ? d.createdAt.toDate().toLocaleString('ar-DZ')
+    : (d.submittedAt ? new Date(d.submittedAt).toLocaleString('ar-DZ') : now.toLocaleString('ar-DZ'));
+  const lossWilaya = WILAYAS.find(w => w.code === d.loss?.wilaya);
+  const resWilaya = WILAYAS.find(w => w.code === r.wilayaResidence);
+  const DL = DECL_LABELS[d.declarationType] || DECL_LABELS.loss;
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // Reporter rows
+  const uType = r.userType || 'citizen';
+  let rows = [['الفئة', getUserTypeLabel(uType)]];
+  if (uType === 'citizen') {
+    rows.push(['رقم التعريف الوطني (NIN)', r.nin]);
+    rows.push(['اللقب والاسم (عربي)', [r.lastName, r.firstName].filter(Boolean).join(' ')]);
+    rows.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'resident') {
+    rows.push(['رقم بطاقة الإقامة', r.passportNum]);
+    rows.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) rows.push(['الجنسية', r.nationality]);
+    rows.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'tourist') {
+    rows.push(['رقم جواز السفر', r.passportNum]);
+    rows.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) rows.push(['الجنسية', r.nationality]);
+    rows.push(['الاسم بالحروف اللاتينية', [r.lastNameLat, r.firstNameLat].filter(Boolean).join(' ')]);
+    if (r.fatherName) rows.push(['اسم ولقب الأب', r.fatherName]);
+    if (r.motherName) rows.push(['اسم ولقب الأم', r.motherName]);
+  } else if (uType === 'entity') {
+    rows.push(['اسم الجهة / المؤسسة', r.entityName]);
+  }
+  if (uType !== 'entity') {
+    if (r.gender) rows.push(['الجنس', getGenderLabel(r.gender)]);
+    if (r.birthDate) rows.push(['تاريخ ومكان الميلاد', r.birthDate + (r.birthPlace ? ' — ' + r.birthPlace : '')]);
+  }
+  rows.push(['مكان الإقامة', (resWilaya ? resWilaya.name : r.wilayaResidence) + (r.communeResidence ? ' — ' + r.communeResidence : '')]);
+  if (r.addressResidence) rows.push(['العنوان', r.addressResidence]);
+  rows.push(['الهاتف', r.phone]);
+  rows.push(['البريد الإلكتروني', r.email || '—']);
+  rows = rows.filter(x => x[1]);
+
+  const reporterHTML = rows.map(([lbl, val]) =>
+    `<div class="field"><div class="lbl">${esc(lbl)}</div><div class="val">${esc(val||'—')}</div></div>`
+  ).join('');
+
+  let docsHTML = '';
+  (d.documents || []).forEach((doc, i) => {
+    docsHTML += `<div class="doc-box">
+      <div class="doc-title">الوثيقة ${i+1}: ${esc(doc.type)}</div>
+      <div class="grid">
+        <div class="field"><div class="lbl">رقم الوثيقة</div><div class="val">${esc(doc.number)}</div></div>
+        <div class="field"><div class="lbl">تاريخ الإصدار</div><div class="val">${esc(doc.issueDate||'—')}</div></div>
+        <div class="field"><div class="lbl">تاريخ الانتهاء</div><div class="val">${esc(doc.expDate||'—')}</div></div>
+        <div class="field"><div class="lbl">جهة الإصدار</div><div class="val">${esc(doc.authority||'—')}</div></div>
+      </div></div>`;
+  });
+
+  const lossHTML =
+    `<div class="field"><div class="lbl">${esc(DL.labelDate)}</div><div class="val">${esc(d.loss?.date||'—')}</div></div>` +
+    `<div class="field"><div class="lbl">${esc(DL.labelWilaya)}</div><div class="val">${esc((lossWilaya?lossWilaya.name:d.loss?.wilaya)||'—')} — ${esc(d.loss?.commune||'')}</div></div>`;
+
+  // QR (data URL — works in print)
+  let qrDataURL = '';
+  try {
+    if (typeof QRious !== 'undefined' && d.reference) {
+      const canvas = document.createElement('canvas');
+      const typeMap = { loss:'LOSS', theft:'THEFT', damage:'DAMAGE' };
+      const nomRaw = ([r.lastName, r.firstName].filter(Boolean).join(' ') || r.entityName || '');
+      const nom = nomRaw.replace(/[^\x20-\x7E]/g,'') || nomRaw;
+      const commune = (d.loss?.commune||'').replace(/[^\x20-\x7E]/g,'');
+      const qrText = [
+        'REF:' + d.reference,
+        'TYPE:' + (typeMap[d.declarationType]||''),
+        'NOM:' + (nom||nomRaw),
+        'NIN:' + (r.nin||r.passportNum||''),
+        r.nationalityCode ? 'NAT:' + r.nationalityCode : '',
+        'DATE:' + (d.loss?.date||''),
+        'WILAYA:' + (d.loss?.wilaya||'') + (commune ? '/' + commune : '')
+      ].filter(Boolean).join('\n');
+      new QRious({ element: canvas, value: qrText, size: 130, level: 'M' });
+      qrDataURL = canvas.toDataURL('image/png');
+    }
+  } catch(e) {}
+
+  const qrHTML = qrDataURL
+    ? `<div style="display:inline-block;text-align:center">
+         <img src="${qrDataURL}" width="130" height="130" alt="QR" style="display:block">
+         <div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">${esc(d.reference||'')}</div>
+       </div>`
+    : '';
+
+  const logoSrc = window.location.href.replace(/\/[^/]*$/, '/') + 'logo_gn.png';
+
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تصريح ${esc(d.reference||d.id)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Cairo,Tahoma,Arial,sans-serif;font-size:13px;color:#111;background:#fff;direction:rtl;padding:16px}
+.no-print{background:#1a2332;color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;border-radius:6px}
+.no-print button{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600}
+.btn-print{background:#27ae60;color:#fff}.btn-close{background:transparent;color:#ccc;border:1px solid #555 !important}
+.decl{max-width:800px;margin:0 auto;background:#fff}
+.hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:3px double #1a2332;padding-bottom:12px;margin-bottom:12px}
+.logo{width:70px;height:auto}
+.titles{text-align:center;font-size:12px;line-height:1.6}
+.titles h2{font-size:15px;font-weight:900;margin-top:4px;color:#1a2332}
+.ref-box{text-align:center;border:2px solid #1a2332;border-radius:6px;padding:10px;margin-bottom:16px}
+.ref-num{font-size:22px;font-weight:900;letter-spacing:1px;font-family:monospace}
+.ref-date{font-size:11px;color:#555;margin-top:4px}
+.section{margin-bottom:16px;border:1px solid #ddd;border-radius:6px;overflow:hidden}
+.section h3{background:#1a2332;color:#fff;padding:8px 12px;font-size:13px;font-weight:700;margin:0}
+.section-body{padding:10px 12px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.field{background:#f7f7f7;border-radius:4px;padding:6px 8px}
+.lbl{font-size:10px;color:#666;margin-bottom:2px}
+.val{font-size:12px;font-weight:600}
+.doc-box{border:1px solid #ccc;border-radius:4px;padding:8px;margin-bottom:8px}
+.doc-title{font-weight:700;margin-bottom:6px;font-size:12px}
+.circumstances{font-size:12px;border:1px solid #ccc;padding:8px;min-height:50px;border-radius:4px;margin-top:8px}
+.footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:20px;border-top:2px solid #1a2332;padding-top:12px}
+.sig{text-align:center;width:140px}
+.sig-label{font-size:11px;color:#555;margin-bottom:40px}
+.sig-line{border-top:1px solid #999;width:120px;margin:0 auto}
+.qr-center{text-align:center}
+@media print{.no-print{display:none !important}body{padding:0}@page{size:A4 portrait;margin:10mm 12mm}*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}}
+</style></head><body>
+<div class="no-print">
+  <button class="btn-close" onclick="window.close()">✕ إغلاق</button>
+  <span style="flex:1;text-align:center;font-size:13px;color:#aaa">📄 ${esc(d.reference||d.id)}</span>
+  <button class="btn-print" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
+</div>
+<div class="decl">
+  <div class="hdr">
+    <img src="${logoSrc}" class="logo" alt="شعار الدرك">
+    <div class="titles"><p>الجمهورية الجزائرية الديمقراطية الشعبية</p><p>وزارة الدفاع الوطني</p><p><strong>قيادة الدرك الوطني</strong></p><h2>${esc(DL.title)}</h2></div>
+    <img src="${logoSrc}" class="logo" alt="شعار الدرك">
+  </div>
+  <div class="ref-box">
+    <div class="ref-num">${esc(d.reference||d.id)}</div>
+    <div class="ref-date">تاريخ الإرسال: ${esc(dateStr)}</div>
+  </div>
+  <div class="section"><h3>معلومات المصرّح</h3><div class="section-body"><div class="grid">${reporterHTML}</div></div></div>
+  <div class="section"><h3>${esc(DL.docs)}</h3><div class="section-body">${docsHTML}</div></div>
+  <div class="section"><h3>${esc(DL.loss)}</h3><div class="section-body"><div class="grid">${lossHTML}</div>
+    <div class="lbl" style="font-size:10px;margin-top:8px">الوصف:</div>
+    <div class="circumstances">${esc(d.loss?.circumstances||'—')}</div></div></div>
+  <div class="footer">
+    <div class="sig"><div class="sig-label">الامضاء</div><div class="sig-line"></div></div>
+    <div class="qr-center">${qrHTML}</div>
+    <div class="sig"><div class="sig-label">الختم</div><div class="sig-line"></div></div>
+  </div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>
+</body></html>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT CSV
+// ═══════════════════════════════════════════════════════════
+
+function exportCSV() {
+  if (!filteredDeclarations.length) {
+    showNotif('لا توجد بيانات للتصدير', true);
+    return;
+  }
+  const headers = ['المرجع','نوع التصريح','الاسم','رقم التعريف','الهاتف','البريد','الولاية','البلدية','تاريخ الإرسال','تاريخ الحادثة','الملابسات'];
+  const rows = filteredDeclarations.map(d => {
+    const r = d.reporter || {};
+    const name = [r.firstName, r.lastName].filter(Boolean).join(' ') || r.entityName || '';
+    const dateStr = d.createdAt?.toDate
+      ? d.createdAt.toDate().toLocaleString('ar-DZ')
+      : (d.submittedAt ? new Date(d.submittedAt).toLocaleString('ar-DZ') : '');
+    return [
+      d.reference || d.id, d.declarationType,
+      name, r.nin || r.passportNum || '',
+      r.phone || '', r.email || '',
+      wilayaName(r.wilayaResidence) || '', r.communeResidence || '',
+      dateStr, d.loss?.date || '',
+      (d.loss?.circumstances || '').replace(/\n/g,' ')
+    ].map(v => '"' + String(v||'').replace(/"/g,'""') + '"');
+  });
+
+  const csv = '﻿' + [headers.map(h => '"'+h+'"'), ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'declarations_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showNotif('تم تصدير ' + filteredDeclarations.length + ' تصريح بنجاح ✓');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function showNotif(msg, isErr) {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-msg').textContent = msg;
+  document.getElementById('notif-icon').textContent = isErr ? 'error' : 'check_circle';
+  n.classList.toggle('error', !!isErr);
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gn_admin_theme', next);
+  document.getElementById('theme-label').textContent = next === 'dark' ? 'فاتح' : 'داكن';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+
+function initAdmin() {
+  initFirebase();
+  loadDeclarations();
+}
+
+// Restore theme
+(function() {
+  const t = localStorage.getItem('gn_admin_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  const lbl = document.getElementById('theme-label');
+  if (lbl) lbl.textContent = t === 'dark' ? 'فاتح' : 'داكن';
+})();
+
+// Auto-login if session active
+if (checkSession()) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'block';
+  isLoggedIn = true;
+  window.addEventListener('load', initAdmin);
+}
+
+// Close detail on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetail();
+});
+</script>
+</body>
+</html>
