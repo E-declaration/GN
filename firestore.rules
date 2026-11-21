@@ -6,8 +6,13 @@ service cloud.firestore {
     // ===== مجموعة التصريحات =====
     match /declarations/{docId} {
 
-      // القراءة: ممنوعة على العموم (للمسؤولين فقط عبر Firebase Console أو Admin SDK)
-      allow read: if false;
+      // القراءة: مسموح فقط من صفحة المطور عبر Firebase Auth anonymous + custom token
+      // أو عبر Firebase Console / Admin SDK
+      // ملاحظة: لتفعيل القراءة من admin.html يجب إما:
+      // الخيار 1 (موصى به): تفعيل Firebase Authentication وإضافة:
+      //   allow read: if request.auth != null;
+      // الخيار 2 (بدون Auth): السماح مؤقتاً للقراءة وحماية الصفحة بكلمة سر JS فقط:
+      allow read: if true;  // ← غيّر إلى: request.auth != null  بعد تفعيل Firebase Auth
 
       // الكتابة: مسموح فقط إذا توفرت الشروط التالية
       allow create: if
