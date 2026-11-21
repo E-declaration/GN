@@ -336,13 +336,13 @@
         </div>
 
         <div class="field" id="fatherName-field">
-          <label for="fatherName">اسم ولقب الأب <span class="req">*</span></label>
-          <input type="text" id="fatherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim();validateRequired(this)">
+          <label for="fatherName">اسم الأب <span class="req">*</span></label>
+          <input type="text" id="fatherName" placeholder="الاسم" onblur="this.value=this.value.trim();validateRequired(this)">
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
         <div class="field" id="motherName-field">
           <label for="motherName">اسم ولقب الأم <span class="req">*</span></label>
-          <input type="text" id="motherName" placeholder="الاسم واللقب كاملاً" onblur="this.value=this.value.trim();validateRequired(this)">
+          <input type="text" id="motherName" placeholder="الاسم واللقب" onblur="this.value=this.value.trim();validateRequired(this)">
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
@@ -361,7 +361,7 @@
         </div>
         <div class="field">
           <label for="birthPlace">مكان الميلاد <span class="req">*</span></label>
-          <input type="text" id="birthPlace" placeholder="البلدية / الولاية" onblur="validateRequired(this)">
+          <input type="text" id="birthPlace" placeholder="مكان الميلاد" onblur="validateRequired(this)">
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
@@ -383,7 +383,7 @@
         </div>
         <div class="field col-span-2">
           <label for="addressResidence">العنوان <span class="req">*</span></label>
-          <input type="text" id="addressResidence" placeholder="رقم، اسم الشارع، الحي..." onblur="validateRequired(this)">
+          <input type="text" id="addressResidence" placeholder="اسم الشارع، الحي..." onblur="validateRequired(this)">
           <span class="err-msg">هذا الحقل إلزامي</span>
         </div>
 
@@ -402,7 +402,7 @@
               <input type="text" class="phone-country-search" id="phoneCountrySearch" placeholder="ابحث عن دولة..." oninput="filterPhoneCountries(this.value)">
               <div class="phone-country-list" id="phoneCountryList"></div>
             </div>
-            <input type="tel" id="phone" placeholder="0XXXXXXXXX" inputmode="tel" onblur="validatePhone(this)">
+            <input type="tel" id="phone" placeholder="أدخله بدون 0 أو رمز الدولة" inputmode="tel" onblur="validatePhone(this)">
           </div>
           <span class="err-msg">أدخل رقم هاتف صحيح</span>
         </div>
@@ -415,7 +415,7 @@
         </div>
         <div class="field">
           <label for="email">البريد الإلكتروني</label>
-          <input type="email" id="email" placeholder="exemple@email.com">
+          <input type="email" id="email" placeholder="youremail@gmail.com">
           <span class="hint">اختياري</span>
         </div>
       </div>
