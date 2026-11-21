@@ -56,6 +56,9 @@
     }
     .phone-country-item:hover, .phone-country-item.selected { background: #f0f7f2; }
     .phone-country-item .flag-emoji { font-size: 20px; line-height: 1; }
+    .phone-country-item .flag-img-wrap { display:inline-flex; align-items:center; width:26px; flex-shrink:0; }
+    .phone-country-item .flag-img-wrap img { border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
+    #phoneFlag img { border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.1); vertical-align:middle; }
     .phone-country-item .country-name { flex: 1; color: #222; }
     .phone-country-item .country-dial { color: #1a7c3e; font-weight: 600; font-size: 12px; }
     .phone-country-divider { border: none; border-top: 1px solid #eee; margin: 2px 0; }
@@ -323,7 +326,7 @@
           <label for="phone">رقم الهاتف <span class="req">*</span></label>
           <div class="phone-picker-wrap">
             <button type="button" class="phone-country-btn" id="phoneCountryBtn" onclick="togglePhoneDropdown(event)" aria-haspopup="listbox">
-              <span id="phoneFlag">🇩🇿</span>
+              <span id="phoneFlag"><img src="https://flagcdn.com/w22/dz.png" width="22" height="15" alt="DZ" style="border-radius:3px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.1);"></span>
               <span class="dial-code" id="phoneDialCode">+213</span>
               <span class="caret">▼</span>
             </button>
