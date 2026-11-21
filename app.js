@@ -470,14 +470,15 @@ function validateRequired(el) {
 }
 function validateNIN() {
   const el = document.getElementById('nin');
-  const hint = el.nextElementSibling;
+  const hint = document.getElementById('nin-counter') || el.nextElementSibling;
   const v = (el.value || '').trim();
-  if(hint) hint.textContent = v.length + ' / 18';
+  const len = v.length;
+  if(hint) hint.textContent = len + ' / 18';
   if(document.getElementById('userType').value === 'citizen') {
     // Algerian NIN: 18 digits, first digit 1 (male) or 2 (female)
     const isValid = /^[12]\d{17}$/.test(v);
     setError(el.closest('.field'), !isValid);
-    if(hint) hint.style.color = isValid ? 'var(--gn-success,green)' : 'var(--gn-error,red)';
+    if(hint) hint.style.color = isValid ? 'var(--gn-success,green)' : (len > 0 ? 'var(--gn-error,red)' : '');
   }
 }
 function validatePhone(el) {
