@@ -147,6 +147,21 @@ let docCount = 0;
 let currentStep = 1;
 let submittedData = null;
 
+// ===== intl-tel-input instance =====
+let itiPhone = null;
+
+function initPhoneITI() {
+  const phoneInput = document.getElementById('phone');
+  if (!phoneInput || typeof window.intlTelInput === 'undefined') return;
+  if (itiPhone) return; // already initialized
+  itiPhone = window.intlTelInput(phoneInput, {
+    initialCountry: 'dz',
+    preferredCountries: ['dz', 'tn', 'ma', 'ly', 'mr', 'ml', 'ne', 'td', 'fr', 'sa', 'ae', 'eg'],
+    separateDialCode: true,
+    utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.min.js'
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('year').textContent = new Date().getFullYear();
   document.getElementById('birthDate').max = new Date().toISOString().split('T')[0];
@@ -156,6 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load theme — default is light
   const savedTheme = localStorage.getItem('theme');
   setTheme(savedTheme ? savedTheme : 'light');
+  // Initialize phone country picker
+  initPhoneITI();
 
   // Restore submitted data from sessionStorage (survives refresh on success page)
   try {
@@ -331,23 +348,48 @@ function validateStep1() {
   }
 
   // For legal entities (entity), skip personal fields (name, birth date, birth place)
-  if(userType !== 'entity') {
+  const isForeignType = (userType === 'resident' || userType === 'tourist');
+  if(userType === 'entity') {
+    // For entity: only validate residence and entity phone
+    ['wilayaResidence','communeResidence'].forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
+      else { setError(el.closest('.field'), false); }
+    });
+    const entityPhone = document.getElementById('phone-entity');
+    if(entityPhone && !entityPhone.value.trim()) { setError(entityPhone.closest('.field'), true); ok=false; }
+    else if(entityPhone) { setError(entityPhone.closest('.field'), false); }
+  } else if(isForeignType) {
+    // For foreign: validate unified name field, birth date, birth place, residence, phone
+    const foreignName = document.getElementById('foreignName');
+    if(foreignName && !foreignName.value.trim()) { setError(foreignName.closest('.field'), true); ok=false; }
+    else if(foreignName) { setError(foreignName.closest('.field'), false); }
     const birthApprox = document.getElementById('birthDateApprox')?.checked;
-    const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence','phone'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence','phone'];
+    const birthFields = birthApprox ? ['birthYear','birthPlace','wilayaResidence','communeResidence'] : ['birthDate','birthPlace','wilayaResidence','communeResidence'];
     birthFields.forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
       if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
       else { setError(el.closest('.field'), false); }
     });
+    // validate phone via iti
+    const phoneEl = document.getElementById('phone');
+    if(phoneEl && !phoneEl.value.trim()) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), true); ok=false; }
+    else if(phoneEl) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), false); }
   } else {
-    // For entity: only validate residence and phone
-    ['wilayaResidence','communeResidence','phone'].forEach(id => {
+    const birthApprox = document.getElementById('birthDateApprox')?.checked;
+    const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence'];
+    birthFields.forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
       if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
       else { setError(el.closest('.field'), false); }
     });
+    // validate phone via iti
+    const phoneEl = document.getElementById('phone');
+    if(phoneEl && !phoneEl.value.trim()) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), true); ok=false; }
+    else if(phoneEl) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), false); }
   }
   return ok;
 }
@@ -448,11 +490,27 @@ window.validateRequired=validateRequired; window.validateNIN=validateNIN; window
 function onUserTypeChange() {
   const t = document.getElementById('userType').value;
   const isEntity = t === 'entity';
+  const isForeign = (t === 'resident' || t === 'tourist');
+
   document.getElementById('nin-field').style.display = t==='citizen'?'':'none';
-  document.getElementById('passport-field').style.display = (t==='resident'||t==='tourist')?'':'none';
+  document.getElementById('passport-field').style.display = isForeign?'':'none';
   document.getElementById('entity-field').style.display = isEntity?'':'none';
-  document.getElementById('lastName-field').style.display = isEntity?'none':'';
-  document.getElementById('firstName-field').style.display = isEntity?'none':'';
+
+  // إخفاء حقول الاسم العربي واللاتيني للأجانب والشخص المعنوي
+  const hideArabicNames = isEntity || isForeign;
+  document.getElementById('lastName-field').style.display = hideArabicNames?'none':'';
+  document.getElementById('firstName-field').style.display = hideArabicNames?'none':'';
+
+  // إخفاء الاسم اللاتيني للشخص المعنوي وللأجانب (يُستبدل بحقل موحد)
+  const lastNameLatField = document.getElementById('lastNameLat-field');
+  const firstNameLatField = document.getElementById('firstNameLat-field');
+  if(lastNameLatField) lastNameLatField.style.display = (isEntity || isForeign)?'none':'';
+  if(firstNameLatField) firstNameLatField.style.display = (isEntity || isForeign)?'none':'';
+
+  // إظهار حقل الاسم الموحد للأجانب فقط
+  const foreignNameField = document.getElementById('foreignName-field');
+  if(foreignNameField) foreignNameField.style.display = isForeign?'':'none';
+
   // Hide birth date and birth place fields for legal entities
   const birthDateField = document.getElementById('birthDate')?.closest('.field');
   if(birthDateField) birthDateField.style.display = isEntity?'none':'';
@@ -462,11 +520,21 @@ function onUserTypeChange() {
   const birthPlaceField = document.getElementById('birthPlace')?.closest('.field');
   if(birthPlaceField) birthPlaceField.style.display = isEntity?'none':'';
 
+  // إدارة حقل الهاتف: مع كود الدولة للأفراد، بسيط للشخص المعنوي
+  const phoneWrapper = document.getElementById('phone-field-wrapper');
+  const phoneEntityField = document.getElementById('phone-entity-field');
+  if(isEntity) {
+    if(phoneWrapper) phoneWrapper.style.display = 'none';
+    if(phoneEntityField) phoneEntityField.style.display = '';
+  } else {
+    if(phoneWrapper) phoneWrapper.style.display = '';
+    if(phoneEntityField) phoneEntityField.style.display = 'none';
+  }
+
   // For entity: auto-select "آخر" gender and hide male/female options
   const genderField = document.getElementById('gender-field');
   if(genderField) {
     if(isEntity) {
-      // Auto-check "آخر" and hide the field
       genderField.style.display = 'none';
       onGenderChange('other');
       const otherCb = document.getElementById('gender-other');
@@ -474,10 +542,8 @@ function onUserTypeChange() {
       document.getElementById('gender-other-opt')?.classList.add('selected');
     } else {
       genderField.style.display = '';
-      // Clear entity-auto-selection if switching away from entity
       const otherCb = document.getElementById('gender-other');
       if(otherCb && otherCb.checked) {
-        // Only clear if no manual gender was chosen
         const maleCb = document.getElementById('gender-male');
         const femaleCb = document.getElementById('gender-female');
         if(!maleCb?.checked && !femaleCb?.checked) {
@@ -557,18 +623,39 @@ async function submitDeclaration() {
 
   const refNum = generateRef();
   const now = new Date();
+  const uType = document.getElementById('userType').value;
+  const isForeignSubmit = (uType === 'resident' || uType === 'tourist');
+  // Collect phone with country code if iti is active, else use entity phone
+  let collectedPhone = '';
+  if(uType === 'entity') {
+    collectedPhone = document.getElementById('phone-entity')?.value || '';
+  } else if(itiPhone) {
+    const dialCode = itiPhone.getSelectedCountryData().dialCode || '';
+    const rawNum = document.getElementById('phone')?.value || '';
+    collectedPhone = dialCode ? ('+' + dialCode + ' ' + rawNum) : rawNum;
+  } else {
+    collectedPhone = document.getElementById('phone')?.value || '';
+  }
+  // For foreign: use foreignName field
+  let collectedLastName = document.getElementById('lastName').value;
+  let collectedFirstName = document.getElementById('firstName').value;
+  if(isForeignSubmit) {
+    const fName = document.getElementById('foreignName')?.value || '';
+    collectedLastName = fName;
+    collectedFirstName = '';
+  }
   const data = {
     reference: refNum,
     submittedAt: now.toISOString(),
     reporter: {
       nature: document.querySelector('[name="reporterNature"]:checked')?.value||'self',
-      userType: document.getElementById('userType').value,
+      userType: uType,
       gender: getSelectedGender(),
       nin: document.getElementById('nin').value,
       passportNum: document.getElementById('passportNum').value,
       entityName: document.getElementById('entityName').value,
-      lastName: document.getElementById('lastName').value,
-      firstName: document.getElementById('firstName').value,
+      lastName: collectedLastName,
+      firstName: collectedFirstName,
       lastNameLat: document.getElementById('lastNameLat').value,
       firstNameLat: document.getElementById('firstNameLat').value,
       fatherName: document.getElementById('fatherName').value,
@@ -577,7 +664,7 @@ async function submitDeclaration() {
       birthPlace: document.getElementById('birthPlace').value,
       wilayaResidence: document.getElementById('wilayaResidence').value,
       communeResidence: document.getElementById('communeResidence').value,
-      phone: document.getElementById('phone').value,
+      phone: collectedPhone,
       email: document.getElementById('email').value
     },
     documents: docs,
@@ -792,20 +879,37 @@ function buildPrintHTML(d) {
     '<div class="field"><div class="lbl">' + esc(DL.labelDate) + '</div><div class="val">' + esc(d.loss.date) + '</div></div>' +
     '<div class="field"><div class="lbl">' + esc(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="val">' + esc(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + esc(d.loss.commune) + '</div></div>';
 
-  // QR — Google Charts API (works without canvas, no external lib needed)
+  // QR — QRCode.js canvas (injected by script tag in the new window)
   let qrHTML = '';
   if (d.status !== 'preview') {
     const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
     const qrText = [
       d.reference,
-      d.declarationTypeLabel,
-      (r.lastName + ' ' + r.firstName).trim(),
+      d.declarationTypeLabel || d.declarationType,
+      (r.lastName + ' ' + r.firstName).trim() || r.entityName || '',
+      r.nin || r.passportNum || '',
       d.loss.date,
       (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
     ].filter(Boolean).join(' | ');
-    const qrSrc = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8';
-    qrHTML = '<img src="' + qrSrc + '" width="90" height="90" style="display:block">' +
-             '<div style="font-size:8px;color:#555;text-align:center;margin-top:3px;font-family:monospace">' + esc(d.reference) + '</div>';
+    // Use a div + inline script so QRCode.js (loaded in new window) renders a real canvas QR
+    const qrTextEsc = esc(qrText);
+    qrHTML = '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
+             '<div id="qr-print-canvas"></div>' +
+             '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + esc(d.reference) + '</div>' +
+             '</div>' +
+             '<script>(function(){' +
+             'function tryQR(){' +
+             'if(typeof QRCode!=="undefined"){' +
+             'new QRCode(document.getElementById("qr-print-canvas"),{text:"' + qrTextEsc.replace(/"/g,'\\"') + '",width:110,height:110,colorDark:"#000",colorLight:"#fff",correctLevel:QRCode.CorrectLevel.M});' +
+             '}else{' +
+             'var img=document.createElement("img");' +
+             'img.src="https://chart.googleapis.com/chart?cht=qr&chs=110x110&chl="+encodeURIComponent("' + qrTextEsc.replace(/"/g,'\\"') + '")+"&choe=UTF-8";' +
+             'img.width=110;img.height=110;' +
+             'document.getElementById("qr-print-canvas").appendChild(img);' +
+             '}' +
+             '}' +
+             'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",tryQR);}else{tryQR();}' +
+             '})();<\/script>';
   }
 
   // Logo URL — absolute so it works from the new window
@@ -817,6 +921,7 @@ function buildPrintHTML(d) {
   return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>تصريح ' + esc(d.reference) + '</title>' +
+    '<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>' +
     '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">' +
     '<style>' +
     '*{box-sizing:border-box;margin:0;padding:0}' +
@@ -876,7 +981,7 @@ function buildPrintHTML(d) {
     '<div class="sig"><div class="sig-label">الختم</div><div class="sig-line"></div></div>' +
     '</div>' +
     '</div>' +
-    '<script>window.onload=function(){window.print();}<\/script>' +
+    '<script>window.onload=function(){setTimeout(function(){window.print();},600);}<\/script>' +
     '</body></html>';
 }
 
@@ -1114,7 +1219,7 @@ function saveFormDraft() {
   try {
     const draft = { v: 1 };
     ['userType','nin','passportNum','entityName','lastName','firstName',
-     'lastNameLat','firstNameLat','fatherName','motherName','birthDate','birthYear','birthPlace',
+     'lastNameLat','firstNameLat','fatherName','motherName','foreignName','birthDate','birthYear','birthPlace',
      'phone','email','lossDate','lossCircumstances'].forEach(id => {
       const el = document.getElementById(id);
       if(el) draft[id] = el.value;
@@ -1176,7 +1281,7 @@ function restoreFormDraft() {
     }
     // Plain text/select fields
     ['nin','passportNum','entityName','lastName','firstName',
-     'lastNameLat','firstNameLat','birthDate','birthYear','birthPlace',
+     'lastNameLat','firstNameLat','fatherName','motherName','foreignName','birthDate','birthYear','birthPlace',
      'phone','email','lossDate','lossCircumstances'].forEach(id => {
       if(draft[id] !== undefined) { const el = document.getElementById(id); if(el) el.value = draft[id]; }
     });
@@ -1258,18 +1363,35 @@ function previewDeclaration() {
     });
   }
   const declType = document.querySelector('[name="declarationType"]:checked')?.value || 'loss';
+  const pUserType = document.getElementById('userType').value;
+  const pIsForeign = (pUserType === 'resident' || pUserType === 'tourist');
+  let pPhone = '';
+  if(pUserType === 'entity') {
+    pPhone = document.getElementById('phone-entity')?.value || '';
+  } else if(itiPhone) {
+    const dc = itiPhone.getSelectedCountryData().dialCode || '';
+    pPhone = dc ? ('+' + dc + ' ' + (document.getElementById('phone')?.value||'')) : (document.getElementById('phone')?.value||'');
+  } else {
+    pPhone = document.getElementById('phone')?.value || '';
+  }
+  let pLastName = document.getElementById('lastName').value;
+  let pFirstName = document.getElementById('firstName').value;
+  if(pIsForeign) {
+    pLastName = document.getElementById('foreignName')?.value || '';
+    pFirstName = '';
+  }
   const pData = {
     reference: '[ معاينة — لم يُرسل بعد ]',
     submittedAt: new Date().toISOString(),
     reporter: {
       nature:          document.querySelector('[name="reporterNature"]:checked')?.value || 'self',
-      userType:        document.getElementById('userType').value,
+      userType:        pUserType,
       gender:          getSelectedGender(),
       nin:             document.getElementById('nin').value,
       passportNum:     document.getElementById('passportNum').value,
       entityName:      document.getElementById('entityName').value,
-      lastName:        document.getElementById('lastName').value,
-      firstName:       document.getElementById('firstName').value,
+      lastName:        pLastName,
+      firstName:       pFirstName,
       lastNameLat:     document.getElementById('lastNameLat').value,
       firstNameLat:    document.getElementById('firstNameLat').value,
       fatherName:      document.getElementById('fatherName').value,
@@ -1280,7 +1402,7 @@ function previewDeclaration() {
       birthPlace:      document.getElementById('birthPlace').value,
       wilayaResidence: document.getElementById('wilayaResidence').value,
       communeResidence:document.getElementById('communeResidence').value,
-      phone:           document.getElementById('phone').value,
+      phone:           pPhone,
       email:           document.getElementById('email').value
     },
     documents: docs,
