@@ -1,103 +1,56 @@
-// ===== QR CODE GENERATOR (محلي، مفتوح المصدر، بدون اتصال خارجي) =====
-// مبني على خوارزمية QR العامة - يولّد SVG مباشرة في المتصفح
-function generateQRSVG(text, size) {
+// ===== QR CODE GENERATOR — يستخدم مكتبة QRious (canvas فقط، موثوقة) =====
+
+// توليد dataURL من نص باستخدام QRious
+function generateQRDataURL(text, size) {
   size = size || 120;
-  // استخدام مكتبة qrcodejs إذا كانت متاحة (محملة في index.html)
-  if (typeof QRCode !== 'undefined') {
+  if (typeof QRious !== 'undefined') {
     try {
-      const container = document.createElement('div');
-      const qr = new QRCode(container, {
-        text: text,
-        width: size,
-        height: size,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
+      var canvas = document.createElement('canvas');
+      var qr = new QRious({
+        element: canvas,
+        value: text,
+        size: size,
+        level: 'M',
+        foreground: '#000000',
+        background: '#ffffff'
       });
-      // استخراج الـ canvas وتحويله إلى dataURL
-      const canvas = container.querySelector('canvas');
-      if (canvas) return canvas.toDataURL('image/png');
-      const img = container.querySelector('img');
-      if (img) return img.src;
+      return canvas.toDataURL('image/png');
     } catch(e) {}
   }
   return null;
 }
 
-// بناء صورة QR بشكل متزامن أو عبر callback
+// بناء صورة QR بشكل متزامن أو عبر callback (للعرض في الصفحة)
 function buildQRElement(text, size, callback) {
   size = size || 120;
-  if (typeof QRCode !== 'undefined') {
-    try {
-      const container = document.createElement('div');
-      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
-      document.body.appendChild(container);
-      const qr = new QRCode(container, {
-        text: text,
-        width: size,
-        height: size,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      // QRCode.js يعمل بشكل متزامن
-      const canvas = container.querySelector('canvas');
-      const imgEl  = container.querySelector('img');
-      let dataUrl = null;
-      if (canvas) {
-        dataUrl = canvas.toDataURL('image/png');
-      } else if (imgEl && imgEl.src) {
-        dataUrl = imgEl.src;
-      }
-      document.body.removeChild(container);
-      if (dataUrl) {
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.width = size; img.height = size;
-        img.style.display = 'block';
-        img.alt = 'QR';
-        callback(img);
-        return;
-      }
-    } catch(e) {}
+  var dataUrl = generateQRDataURL(text, size);
+  if (dataUrl) {
+    var img = document.createElement('img');
+    img.src = dataUrl;
+    img.width = size; img.height = size;
+    img.style.display = 'block';
+    img.alt = 'QR Code';
+    callback(img);
+    return;
   }
-  // Fallback: رسالة بديلة
-  const fb = document.createElement('div');
-  fb.style.cssText = `width:${size}px;height:${size}px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;text-align:center;`;
+  // Fallback إذا لم تكن المكتبة متاحة
+  var fb = document.createElement('div');
+  fb.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;text-align:center;';
   fb.textContent = 'QR';
   callback(fb);
 }
 
-// بناء HTML لـ QR في صفحة الطباعة (يستخدم dataURL لضمان الظهور عند الطباعة)
+// بناء HTML لـ QR في صفحة الطباعة — يُضمّن dataURL مباشرة ليظهر دائماً عند الطباعة
 function buildQRHTMLForPrint(text, size, reference) {
   size = size || 120;
-  if (typeof QRCode !== 'undefined') {
-    try {
-      const container = document.createElement('div');
-      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
-      document.body.appendChild(container);
-      new QRCode(container, {
-        text: text,
-        width: size,
-        height: size,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      const canvas = container.querySelector('canvas');
-      const imgEl  = container.querySelector('img');
-      let dataUrl = null;
-      if (canvas) dataUrl = canvas.toDataURL('image/png');
-      else if (imgEl && imgEl.src) dataUrl = imgEl.src;
-      document.body.removeChild(container);
-      if (dataUrl) {
-        return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
-               '<img id="qr-print-img" src="' + dataUrl + '" width="' + size + '" height="' + size + '" alt="QR" style="display:block;">' +
-               '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + (reference || '') + '</div>' +
-               '</div>';
-      }
-    } catch(e) {}
+  var dataUrl = generateQRDataURL(text, size);
+  if (dataUrl) {
+    return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
+           '<img id="qr-print-img" src="' + dataUrl + '" width="' + size + '" height="' + size + '" alt="QR Code" style="display:block;">' +
+           '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + (reference || '') + '</div>' +
+           '</div>';
   }
+  // Fallback: placeholder إذا لم تُولَّد الصورة
   return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
          '<div style="width:' + size + 'px;height:' + size + 'px;border:1px dashed #ccc;line-height:' + size + 'px;font-size:10px;color:#999;text-align:center">QR</div>' +
          '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + (reference || '') + '</div>' +
@@ -1286,20 +1239,20 @@ function buildPrintHTML(d) {
     '<div class="field"><div class="lbl">' + esc(DL.labelDate) + '</div><div class="val">' + esc(d.loss.date) + '</div></div>' +
     '<div class="field"><div class="lbl">' + esc(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="val">' + esc(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + esc(d.loss.commune) + '</div></div>';
 
-  // QR — توليد محلي بمكتبة QRCode.js (مفتوحة المصدر، تعمل بدون اتصال، مضمونة عند الطباعة)
+  // QR — توليد محلي بمكتبة QRious (canvas، تعمل بدون اتصال، مضمونة عند الطباعة)
   let qrHTML = '';
   if (d.status !== 'preview') {
     const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
     const qrText = [
-      d.reference,
-      d.declarationTypeLabel || d.declarationType,
-      (r.lastName + ' ' + r.firstName).trim() || r.entityName || '',
-      r.nin || r.passportNum || '',
-      d.loss.date,
-      (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
-    ].filter(Boolean).join(' | ');
-    // توليد QR محلياً باستخدام QRCode.js — الصورة كـ dataURL تظهر دائماً عند الطباعة والحفظ كـ PDF
-    qrHTML = buildQRHTMLForPrint(qrText, 120, d.reference);
+      'REF:' + d.reference,
+      'TYPE:' + (d.declarationTypeLabel || d.declarationType),
+      'NOM:' + ((r.lastName + ' ' + r.firstName).trim() || r.entityName || ''),
+      'NIN:' + (r.nin || r.passportNum || ''),
+      'DATE:' + d.loss.date,
+      'LIEU:' + ((lossW ? lossW.name : d.loss.wilaya) + '/' + d.loss.commune)
+    ].filter(Boolean).join('\n');
+    // توليد QR باستخدام QRious — الصورة كـ dataURL تظهر دائماً عند الطباعة والحفظ كـ PDF
+    qrHTML = buildQRHTMLForPrint(qrText, 130, d.reference);
   }
 
   // Logo URL — absolute so it works from the new window
@@ -1484,7 +1437,7 @@ function showPrintStep(d) {
     '<div class="dv-val">' + escHtml(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + escHtml(d.loss.commune) + '</div></div>';
   document.getElementById('dv-circumstances').textContent = d.loss.circumstances;
 
-  // ── QR code — توليد محلي بـ QRCode.js (مفتوح المصدر، يعمل بدون اتصال خارجي) ──
+  // ── QR code — توليد محلي بـ QRious (canvas، موثوق، يعمل بدون اتصال خارجي) ──
   const qrDiv = document.getElementById('dv-qr-img');
   const qrRef = document.getElementById('dv-qr-ref');
   qrDiv.innerHTML = '';
@@ -1492,14 +1445,15 @@ function showPrintStep(d) {
   if (d.status !== 'preview') {
     const lossW   = WILAYAS.find(w => w.code === d.loss.wilaya);
     const qrText  = [
-      d.reference,
-      d.declarationTypeLabel,
-      (r.lastName + ' ' + r.firstName).trim(),
-      d.loss.date,
-      (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
-    ].filter(Boolean).join(' | ');
+      'REF:' + d.reference,
+      'TYPE:' + (d.declarationTypeLabel || d.declarationType),
+      'NOM:' + ((r.lastName + ' ' + r.firstName).trim() || r.entityName || ''),
+      'NIN:' + (r.nin || r.passportNum || ''),
+      'DATE:' + d.loss.date,
+      'LIEU:' + ((lossW ? lossW.name : d.loss.wilaya) + '/' + d.loss.commune)
+    ].filter(Boolean).join('\n');
 
-    // توليد QR محلياً باستخدام QRCode.js
+    // توليد QR باستخدام QRious
     buildQRElement(qrText, 90, function(el) {
       qrDiv.appendChild(el);
     });
