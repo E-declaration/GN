@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-Robots-Tag" content="noindex, nofollow">
   <meta http-equiv="X-Frame-Options" content="DENY">
-  <title>لوحة تحكم المطور — GN</title>
+  <title>لوحة الإحصائيات GN</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="icon" type="image/png" href="favicon.png">
@@ -430,7 +430,7 @@
 <div id="login-screen">
   <div class="login-card">
     <img src="logo_gn.png" class="login-logo" alt="GN">
-    <div class="login-title">لوحة تحكم المطور</div>
+    <div class="login-title">لوحة الإحصائيات</div>
     <div class="login-field">
       <label>اسم المستخدم</label>
       <input type="text" id="login-user" autocomplete="username" placeholder="admin" dir="ltr">
@@ -532,7 +532,7 @@
   <div class="toolbar">
     <input type="search" id="search-input" placeholder="🔍  بحث بالمرجع، الاسم، رقم NIN..." oninput="applyFilters()">
     <select id="filter-type" onchange="applyFilters()">
-      <option value="">كل الأنواع</option>
+      <option value="">كل التصريحات</option>
       <option value="loss">ضياع</option>
       <option value="theft">سرقة</option>
       <option value="damage">إتلاف</option>
@@ -542,7 +542,7 @@
       <option value="citizen">مواطن جزائري</option>
       <option value="resident">مقيم أجنبي</option>
       <option value="tourist">سائح أجنبي</option>
-      <option value="entity">شخص معنوي</option>
+      <option value="entity">مؤسسة/جمعية</option>
     </select>
     <select id="filter-nationality" onchange="applyFilters()" style="display:none">
       <option value="">كل الجنسيات</option>
@@ -624,19 +624,15 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
-//  ADMIN CONFIG — غيّر هذه القيم
+//  ADMIN CONFIG
 // ═══════════════════════════════════════════════════════════
 
 // بيانات تسجيل الدخول — قم بتغيير كلمة السر قبل النشر
 const ADMIN_CREDENTIALS = [
-  { user: 'dev', pass: 'GN@admin2025!' },
-  // يمكنك إضافة حسابات إضافية هنا
+  { user: 'Ahmedcrypto21', pass: '@GNadmin2026@' },
   // { user: 'admin2', pass: 'pass2' }
 ];
 
-// مفاتيح Firebase (نفسها المستخدمة في التطبيق الرئيسي)
-// إذا لم تكن قد نشرت firebase بعد في index.html، أضف هنا مفاتيحك
-// هذا الكود سيحاول استخدام التهيئة الموجودة أو إنشاء جديدة
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDUFbdUFtx-92jsIcH9umI-PaAVmQdLksY",
   authDomain: "e-declaration-gn.firebaseapp.com",
@@ -822,7 +818,7 @@ function doLogout() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  WILAYAS + COMMUNES (نفس القائمة الكاملة من التطبيق الأصلي)
+//  WILAYAS + COMMUNES
 // ═══════════════════════════════════════════════════════════
 
 const WILAYAS = [
@@ -843,7 +839,7 @@ const WILAYAS = [
   {code:"57",name:"عين صالح"},{code:"58",name:"عين قزام"},{code:"59",name:"آفلو"},{code:"60",name:"بريكة"},
   {code:"61",name:"القنطرة"},{code:"62",name:"بئر العاتر"},{code:"63",name:"العريشة"},{code:"64",name:"قصر الشلالة"},
   {code:"65",name:"عين وسارة"},{code:"66",name:"مسعد"},{code:"67",name:"قصر البخاري"},{code:"68",name:"بوسعادة"},
-  {code:"69",name:"الأبيض سيدي الشيخ"}
+  {code:"69",name:"الأبيض سيدي الشيخ"},{code:"70",name:"خارج الوطن"},
 ];
 
 const COMMUNES_BY_WILAYA = {
@@ -916,6 +912,7 @@ const COMMUNES_BY_WILAYA = {
   "67":["أم الجليل","أولاد عنتر","أولاد معرف","أولاد هلال","السانق","الشهبونية","العمارية","العوينات","الكاف الأخضر","بوعيش","بوغار","بوغزول","تفراوت","دراق","سانڨ","سيدي دامد","شلالة العذاورة","شنيقل","عزيز","عين القصير","عين بوسيف","قصر البخاري","مفاتحة"],
   "68":["أمجدل","أولاد سليمان","أولاد سيدي إبراهيم","أولاد سيدي ابراهيم","أولاد عطية","أولاد مـاضي","الحوامد","الدهاهنة","الزرزور","المعاريف","الهامل","بلعايبة","بن سرور","بنزوه","بوسعادة","بوطي السايح","بير الفضة","تامسة","جبل أمساعد","جبل مساعد","حمـام الضلعة","خبانة","خطوطي سد الجير","سليم","سيدي امحمد","سيدي عامر","عين الحجل","عين الريش","عين الملح","عين فارس","محمد بوضياف","مسيف","مقرة","ولتام"],
   "69":["أربوات","الأبيض سيدي الشيخ","الابيض سيدي الشيخ","البنود","المهرة","المھارة","بوسمغون","شلالة","عرباوة","عين العراك"]
+  "70":["خارج الوطن"]
 };
 
 // قائمة الدول/الجنسيات
