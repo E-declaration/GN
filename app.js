@@ -147,31 +147,264 @@ let docCount = 0;
 let currentStep = 1;
 let submittedData = null;
 
-// ===== intl-tel-input instance =====
-let itiPhone = null;
+// ===== Custom Phone Country Picker =====
+let itiPhone = null; // kept for compatibility
+
+const PHONE_COUNTRIES = [
+  // Preferred (shown first)
+  { code: 'DZ', flag: '🇩🇿', name: 'الجزائر', dial: '+213', preferred: true },
+  { code: 'TN', flag: '🇹🇳', name: 'تونس', dial: '+216', preferred: true },
+  { code: 'MA', flag: '🇲🇦', name: 'المغرب', dial: '+212', preferred: true },
+  { code: 'LY', flag: '🇱🇾', name: 'ليبيا', dial: '+218', preferred: true },
+  { code: 'MR', flag: '🇲🇷', name: 'موريتانيا', dial: '+222', preferred: true },
+  { code: 'EG', flag: '🇪🇬', name: 'مصر', dial: '+20', preferred: true },
+  { code: 'SA', flag: '🇸🇦', name: 'السعودية', dial: '+966', preferred: true },
+  { code: 'AE', flag: '🇦🇪', name: 'الإمارات', dial: '+971', preferred: true },
+  { code: 'FR', flag: '🇫🇷', name: 'فرنسا', dial: '+33', preferred: true },
+  // All countries
+  { code: 'AF', flag: '🇦🇫', name: 'أفغانستان', dial: '+93' },
+  { code: 'AL', flag: '🇦🇱', name: 'ألبانيا', dial: '+355' },
+  { code: 'DE', flag: '🇩🇪', name: 'ألمانيا', dial: '+49' },
+  { code: 'AO', flag: '🇦🇴', name: 'أنغولا', dial: '+244' },
+  { code: 'AR', flag: '🇦🇷', name: 'الأرجنتين', dial: '+54' },
+  { code: 'AM', flag: '🇦🇲', name: 'أرمينيا', dial: '+374' },
+  { code: 'AU', flag: '🇦🇺', name: 'أستراليا', dial: '+61' },
+  { code: 'AT', flag: '🇦🇹', name: 'النمسا', dial: '+43' },
+  { code: 'AZ', flag: '🇦🇿', name: 'أذربيجان', dial: '+994' },
+  { code: 'BH', flag: '🇧🇭', name: 'البحرين', dial: '+973' },
+  { code: 'BD', flag: '🇧🇩', name: 'بنغلاديش', dial: '+880' },
+  { code: 'BY', flag: '🇧🇾', name: 'بيلاروسيا', dial: '+375' },
+  { code: 'BE', flag: '🇧🇪', name: 'بلجيكا', dial: '+32' },
+  { code: 'BJ', flag: '🇧🇯', name: 'بنين', dial: '+229' },
+  { code: 'BT', flag: '🇧🇹', name: 'بوتان', dial: '+975' },
+  { code: 'BO', flag: '🇧🇴', name: 'بوليفيا', dial: '+591' },
+  { code: 'BA', flag: '🇧🇦', name: 'البوسنة', dial: '+387' },
+  { code: 'BW', flag: '🇧🇼', name: 'بوتسوانا', dial: '+267' },
+  { code: 'BR', flag: '🇧🇷', name: 'البرازيل', dial: '+55' },
+  { code: 'BN', flag: '🇧🇳', name: 'بروناي', dial: '+673' },
+  { code: 'BG', flag: '🇧🇬', name: 'بلغاريا', dial: '+359' },
+  { code: 'BF', flag: '🇧🇫', name: 'بوركينا فاسو', dial: '+226' },
+  { code: 'BI', flag: '🇧🇮', name: 'بوروندي', dial: '+257' },
+  { code: 'KH', flag: '🇰🇭', name: 'كمبوديا', dial: '+855' },
+  { code: 'CM', flag: '🇨🇲', name: 'الكاميرون', dial: '+237' },
+  { code: 'CA', flag: '🇨🇦', name: 'كندا', dial: '+1' },
+  { code: 'CV', flag: '🇨🇻', name: 'الرأس الأخضر', dial: '+238' },
+  { code: 'CF', flag: '🇨🇫', name: 'أفريقيا الوسطى', dial: '+236' },
+  { code: 'TD', flag: '🇹🇩', name: 'تشاد', dial: '+235' },
+  { code: 'CL', flag: '🇨🇱', name: 'تشيلي', dial: '+56' },
+  { code: 'CN', flag: '🇨🇳', name: 'الصين', dial: '+86' },
+  { code: 'CO', flag: '🇨🇴', name: 'كولومبيا', dial: '+57' },
+  { code: 'KM', flag: '🇰🇲', name: 'جزر القمر', dial: '+269' },
+  { code: 'CG', flag: '🇨🇬', name: 'الكونغو', dial: '+242' },
+  { code: 'CD', flag: '🇨🇩', name: 'الكونغو الديمقراطية', dial: '+243' },
+  { code: 'CR', flag: '🇨🇷', name: 'كوستاريكا', dial: '+506' },
+  { code: 'CI', flag: '🇨🇮', name: 'كوت ديفوار', dial: '+225' },
+  { code: 'HR', flag: '🇭🇷', name: 'كرواتيا', dial: '+385' },
+  { code: 'CU', flag: '🇨🇺', name: 'كوبا', dial: '+53' },
+  { code: 'CY', flag: '🇨🇾', name: 'قبرص', dial: '+357' },
+  { code: 'CZ', flag: '🇨🇿', name: 'التشيك', dial: '+420' },
+  { code: 'DK', flag: '🇩🇰', name: 'الدنمارك', dial: '+45' },
+  { code: 'DJ', flag: '🇩🇯', name: 'جيبوتي', dial: '+253' },
+  { code: 'DO', flag: '🇩🇴', name: 'الدومينيكان', dial: '+1-809' },
+  { code: 'EC', flag: '🇪🇨', name: 'الإكوادور', dial: '+593' },
+  { code: 'ER', flag: '🇪🇷', name: 'إريتريا', dial: '+291' },
+  { code: 'EE', flag: '🇪🇪', name: 'إستونيا', dial: '+372' },
+  { code: 'ET', flag: '🇪🇹', name: 'إثيوبيا', dial: '+251' },
+  { code: 'FJ', flag: '🇫🇯', name: 'فيجي', dial: '+679' },
+  { code: 'FI', flag: '🇫🇮', name: 'فنلندا', dial: '+358' },
+  { code: 'GA', flag: '🇬🇦', name: 'الغابون', dial: '+241' },
+  { code: 'GM', flag: '🇬🇲', name: 'غامبيا', dial: '+220' },
+  { code: 'GE', flag: '🇬🇪', name: 'جورجيا', dial: '+995' },
+  { code: 'GH', flag: '🇬🇭', name: 'غانا', dial: '+233' },
+  { code: 'GR', flag: '🇬🇷', name: 'اليونان', dial: '+30' },
+  { code: 'GT', flag: '🇬🇹', name: 'غواتيمالا', dial: '+502' },
+  { code: 'GN', flag: '🇬🇳', name: 'غينيا', dial: '+224' },
+  { code: 'GW', flag: '🇬🇼', name: 'غينيا بيساو', dial: '+245' },
+  { code: 'GY', flag: '🇬🇾', name: 'غيانا', dial: '+592' },
+  { code: 'HT', flag: '🇭🇹', name: 'هايتي', dial: '+509' },
+  { code: 'HN', flag: '🇭🇳', name: 'هندوراس', dial: '+504' },
+  { code: 'HU', flag: '🇭🇺', name: 'المجر', dial: '+36' },
+  { code: 'IS', flag: '🇮🇸', name: 'آيسلندا', dial: '+354' },
+  { code: 'IN', flag: '🇮🇳', name: 'الهند', dial: '+91' },
+  { code: 'ID', flag: '🇮🇩', name: 'إندونيسيا', dial: '+62' },
+  { code: 'IR', flag: '🇮🇷', name: 'إيران', dial: '+98' },
+  { code: 'IQ', flag: '🇮🇶', name: 'العراق', dial: '+964' },
+  { code: 'IE', flag: '🇮🇪', name: 'أيرلندا', dial: '+353' },
+  { code: 'IL', flag: '🇮🇱', name: 'إسرائيل', dial: '+972' },
+  { code: 'IT', flag: '🇮🇹', name: 'إيطاليا', dial: '+39' },
+  { code: 'JM', flag: '🇯🇲', name: 'جامايكا', dial: '+1-876' },
+  { code: 'JP', flag: '🇯🇵', name: 'اليابان', dial: '+81' },
+  { code: 'JO', flag: '🇯🇴', name: 'الأردن', dial: '+962' },
+  { code: 'KZ', flag: '🇰🇿', name: 'كازاخستان', dial: '+7' },
+  { code: 'KE', flag: '🇰🇪', name: 'كينيا', dial: '+254' },
+  { code: 'KI', flag: '🇰🇮', name: 'كيريباتي', dial: '+686' },
+  { code: 'KW', flag: '🇰🇼', name: 'الكويت', dial: '+965' },
+  { code: 'KG', flag: '🇰🇬', name: 'قيرغيزستان', dial: '+996' },
+  { code: 'LA', flag: '🇱🇦', name: 'لاوس', dial: '+856' },
+  { code: 'LV', flag: '🇱🇻', name: 'لاتفيا', dial: '+371' },
+  { code: 'LB', flag: '🇱🇧', name: 'لبنان', dial: '+961' },
+  { code: 'LS', flag: '🇱🇸', name: 'ليسوتو', dial: '+266' },
+  { code: 'LR', flag: '🇱🇷', name: 'ليبيريا', dial: '+231' },
+  { code: 'LI', flag: '🇱🇮', name: 'ليختنشتاين', dial: '+423' },
+  { code: 'LT', flag: '🇱🇹', name: 'ليتوانيا', dial: '+370' },
+  { code: 'LU', flag: '🇱🇺', name: 'لوكسمبورغ', dial: '+352' },
+  { code: 'MG', flag: '🇲🇬', name: 'مدغشقر', dial: '+261' },
+  { code: 'MW', flag: '🇲🇼', name: 'مالاوي', dial: '+265' },
+  { code: 'MY', flag: '🇲🇾', name: 'ماليزيا', dial: '+60' },
+  { code: 'MV', flag: '🇲🇻', name: 'المالديف', dial: '+960' },
+  { code: 'ML', flag: '🇲🇱', name: 'مالي', dial: '+223' },
+  { code: 'MT', flag: '🇲🇹', name: 'مالطا', dial: '+356' },
+  { code: 'MH', flag: '🇲🇭', name: 'جزر مارشال', dial: '+692' },
+  { code: 'MX', flag: '🇲🇽', name: 'المكسيك', dial: '+52' },
+  { code: 'FM', flag: '🇫🇲', name: 'ميكرونيزيا', dial: '+691' },
+  { code: 'MD', flag: '🇲🇩', name: 'مولدوفا', dial: '+373' },
+  { code: 'MC', flag: '🇲🇨', name: 'موناكو', dial: '+377' },
+  { code: 'MN', flag: '🇲🇳', name: 'منغوليا', dial: '+976' },
+  { code: 'ME', flag: '🇲🇪', name: 'الجبل الأسود', dial: '+382' },
+  { code: 'MZ', flag: '🇲🇿', name: 'موزمبيق', dial: '+258' },
+  { code: 'MM', flag: '🇲🇲', name: 'ميانمار', dial: '+95' },
+  { code: 'NA', flag: '🇳🇦', name: 'ناميبيا', dial: '+264' },
+  { code: 'NR', flag: '🇳🇷', name: 'ناورو', dial: '+674' },
+  { code: 'NP', flag: '🇳🇵', name: 'نيبال', dial: '+977' },
+  { code: 'NL', flag: '🇳🇱', name: 'هولندا', dial: '+31' },
+  { code: 'NZ', flag: '🇳🇿', name: 'نيوزيلندا', dial: '+64' },
+  { code: 'NI', flag: '🇳🇮', name: 'نيكاراغوا', dial: '+505' },
+  { code: 'NE', flag: '🇳🇪', name: 'النيجر', dial: '+227' },
+  { code: 'NG', flag: '🇳🇬', name: 'نيجيريا', dial: '+234' },
+  { code: 'NO', flag: '🇳🇴', name: 'النرويج', dial: '+47' },
+  { code: 'OM', flag: '🇴🇲', name: 'عُمان', dial: '+968' },
+  { code: 'PK', flag: '🇵🇰', name: 'باكستان', dial: '+92' },
+  { code: 'PW', flag: '🇵🇼', name: 'بالاو', dial: '+680' },
+  { code: 'PS', flag: '🇵🇸', name: 'فلسطين', dial: '+970' },
+  { code: 'PA', flag: '🇵🇦', name: 'بنما', dial: '+507' },
+  { code: 'PG', flag: '🇵🇬', name: 'بابوا غينيا الجديدة', dial: '+675' },
+  { code: 'PY', flag: '🇵🇾', name: 'باراغواي', dial: '+595' },
+  { code: 'PE', flag: '🇵🇪', name: 'بيرو', dial: '+51' },
+  { code: 'PH', flag: '🇵🇭', name: 'الفلبين', dial: '+63' },
+  { code: 'PL', flag: '🇵🇱', name: 'بولندا', dial: '+48' },
+  { code: 'PT', flag: '🇵🇹', name: 'البرتغال', dial: '+351' },
+  { code: 'QA', flag: '🇶🇦', name: 'قطر', dial: '+974' },
+  { code: 'RO', flag: '🇷🇴', name: 'رومانيا', dial: '+40' },
+  { code: 'RU', flag: '🇷🇺', name: 'روسيا', dial: '+7' },
+  { code: 'RW', flag: '🇷🇼', name: 'رواندا', dial: '+250' },
+  { code: 'KN', flag: '🇰🇳', name: 'سانت كيتس ونيفيس', dial: '+1-869' },
+  { code: 'LC', flag: '🇱🇨', name: 'سانت لوسيا', dial: '+1-758' },
+  { code: 'VC', flag: '🇻🇨', name: 'سانت فنسنت', dial: '+1-784' },
+  { code: 'WS', flag: '🇼🇸', name: 'ساموا', dial: '+685' },
+  { code: 'SM', flag: '🇸🇲', name: 'سان مارينو', dial: '+378' },
+  { code: 'ST', flag: '🇸🇹', name: 'ساو تومي وبرينسيب', dial: '+239' },
+  { code: 'SN', flag: '🇸🇳', name: 'السنغال', dial: '+221' },
+  { code: 'RS', flag: '🇷🇸', name: 'صربيا', dial: '+381' },
+  { code: 'SC', flag: '🇸🇨', name: 'سيشيل', dial: '+248' },
+  { code: 'SL', flag: '🇸🇱', name: 'سيراليون', dial: '+232' },
+  { code: 'SG', flag: '🇸🇬', name: 'سنغافورة', dial: '+65' },
+  { code: 'SK', flag: '🇸🇰', name: 'سلوفاكيا', dial: '+421' },
+  { code: 'SI', flag: '🇸🇮', name: 'سلوفينيا', dial: '+386' },
+  { code: 'SB', flag: '🇸🇧', name: 'جزر سليمان', dial: '+677' },
+  { code: 'SO', flag: '🇸🇴', name: 'الصومال', dial: '+252' },
+  { code: 'ZA', flag: '🇿🇦', name: 'جنوب أفريقيا', dial: '+27' },
+  { code: 'SS', flag: '🇸🇸', name: 'جنوب السودان', dial: '+211' },
+  { code: 'ES', flag: '🇪🇸', name: 'إسبانيا', dial: '+34' },
+  { code: 'LK', flag: '🇱🇰', name: 'سريلانكا', dial: '+94' },
+  { code: 'SD', flag: '🇸🇩', name: 'السودان', dial: '+249' },
+  { code: 'SR', flag: '🇸🇷', name: 'سورينام', dial: '+597' },
+  { code: 'SZ', flag: '🇸🇿', name: 'إسواتيني', dial: '+268' },
+  { code: 'SE', flag: '🇸🇪', name: 'السويد', dial: '+46' },
+  { code: 'CH', flag: '🇨🇭', name: 'سويسرا', dial: '+41' },
+  { code: 'SY', flag: '🇸🇾', name: 'سوريا', dial: '+963' },
+  { code: 'TW', flag: '🇹🇼', name: 'تايوان', dial: '+886' },
+  { code: 'TJ', flag: '🇹🇯', name: 'طاجيكستان', dial: '+992' },
+  { code: 'TZ', flag: '🇹🇿', name: 'تنزانيا', dial: '+255' },
+  { code: 'TH', flag: '🇹🇭', name: 'تايلاند', dial: '+66' },
+  { code: 'TL', flag: '🇹🇱', name: 'تيمور الشرقية', dial: '+670' },
+  { code: 'TG', flag: '🇹🇬', name: 'توغو', dial: '+228' },
+  { code: 'TO', flag: '🇹🇴', name: 'تونغا', dial: '+676' },
+  { code: 'TT', flag: '🇹🇹', name: 'ترينيداد وتوباغو', dial: '+1-868' },
+  { code: 'TR', flag: '🇹🇷', name: 'تركيا', dial: '+90' },
+  { code: 'TM', flag: '🇹🇲', name: 'تركمانستان', dial: '+993' },
+  { code: 'TV', flag: '🇹🇻', name: 'توفالو', dial: '+688' },
+  { code: 'UG', flag: '🇺🇬', name: 'أوغندا', dial: '+256' },
+  { code: 'UA', flag: '🇺🇦', name: 'أوكرانيا', dial: '+380' },
+  { code: 'GB', flag: '🇬🇧', name: 'المملكة المتحدة', dial: '+44' },
+  { code: 'US', flag: '🇺🇸', name: 'الولايات المتحدة', dial: '+1' },
+  { code: 'UY', flag: '🇺🇾', name: 'أوروغواي', dial: '+598' },
+  { code: 'UZ', flag: '🇺🇿', name: 'أوزبكستان', dial: '+998' },
+  { code: 'VU', flag: '🇻🇺', name: 'فانواتو', dial: '+678' },
+  { code: 'VE', flag: '🇻🇪', name: 'فنزويلا', dial: '+58' },
+  { code: 'VN', flag: '🇻🇳', name: 'فيتنام', dial: '+84' },
+  { code: 'YE', flag: '🇾🇪', name: 'اليمن', dial: '+967' },
+  { code: 'ZM', flag: '🇿🇲', name: 'زامبيا', dial: '+260' },
+  { code: 'ZW', flag: '🇿🇼', name: 'زيمبابوي', dial: '+263' },
+];
+
+let selectedPhoneCountry = PHONE_COUNTRIES[0]; // Algeria default
+
+function buildPhoneCountryList(filter) {
+  const list = document.getElementById('phoneCountryList');
+  if (!list) return;
+  list.innerHTML = '';
+  const preferred = PHONE_COUNTRIES.filter(c => c.preferred && (!filter || c.name.includes(filter) || c.dial.includes(filter)));
+  const rest = PHONE_COUNTRIES.filter(c => !c.preferred && (!filter || c.name.includes(filter) || c.dial.includes(filter)));
+  const render = (arr) => arr.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'phone-country-item' + (c.code === selectedPhoneCountry.code ? ' selected' : '');
+    item.innerHTML = `<span class="flag-emoji">${c.flag}</span><span class="country-name">${c.name}</span><span class="country-dial">${c.dial}</span>`;
+    item.onclick = () => selectPhoneCountry(c);
+    list.appendChild(item);
+  });
+  render(preferred);
+  if (preferred.length && rest.length) {
+    const hr = document.createElement('hr');
+    hr.className = 'phone-country-divider';
+    list.appendChild(hr);
+  }
+  render(rest);
+}
+
+function selectPhoneCountry(country) {
+  selectedPhoneCountry = country;
+  const flagEl = document.getElementById('phoneFlag');
+  const dialEl = document.getElementById('phoneDialCode');
+  if (flagEl) flagEl.textContent = country.flag;
+  if (dialEl) dialEl.textContent = country.dial;
+  closePhoneDropdown();
+}
+
+function togglePhoneDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('phoneCountryDropdown');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('open');
+  if (isOpen) {
+    closePhoneDropdown();
+  } else {
+    dd.classList.add('open');
+    buildPhoneCountryList('');
+    const search = document.getElementById('phoneCountrySearch');
+    if (search) { search.value = ''; search.focus(); }
+  }
+}
+
+function closePhoneDropdown() {
+  const dd = document.getElementById('phoneCountryDropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function filterPhoneCountries(val) {
+  buildPhoneCountryList(val.trim());
+}
+
+function getPhoneWithDialCode() {
+  const raw = document.getElementById('phone')?.value || '';
+  return selectedPhoneCountry.dial + ' ' + raw;
+}
 
 function initPhoneITI() {
-  const phoneInput = document.getElementById('phone');
-  if (!phoneInput || typeof window.intlTelInput === 'undefined') return;
-  if (itiPhone) return; // already initialized
-  itiPhone = window.intlTelInput(phoneInput, {
-    initialCountry: 'dz',
-    preferredCountries: ['dz', 'tn', 'ma', 'ly', 'mr', 'ml', 'ne', 'td', 'fr', 'sa', 'ae', 'eg'],
-    separateDialCode: true,
-    useFullscreenPopup: false,
-    countrySearch: true,
-    loadUtils: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.5.3/js/utils.min.js'
-  });
-  // Prevent dropdown from auto-opening on page load / focus
-  phoneInput.addEventListener('focus', function(e) {
-    // Only open dropdown on explicit user interaction, not programmatic focus
-  });
-  // Close dropdown when clicking outside
+  buildPhoneCountryList('');
+  // Close dropdown on outside click
   document.addEventListener('click', function(e) {
-    if (!e.target.closest('#phone-iti-wrapper') && !e.target.closest('.iti__dropdown-content')) {
-      if (itiPhone && typeof itiPhone.closeDropdown === 'function') {
-        itiPhone.closeDropdown();
-      }
+    if (!e.target.closest('.phone-picker-wrap')) {
+      closePhoneDropdown();
     }
   });
 }
@@ -361,10 +594,17 @@ function validateStep1() {
     }
   }
 
+  // Address (required for all types)
+  const addrEl = document.getElementById('addressResidence');
+  if(addrEl) {
+    if(!addrEl.value.trim()) { setError(addrEl.closest('.field'), true); ok=false; }
+    else { setError(addrEl.closest('.field'), false); }
+  }
+
   // For legal entities (entity), skip personal fields (name, birth date, birth place)
   const isForeignType = (userType === 'resident' || userType === 'tourist');
   if(userType === 'entity') {
-    // For entity: only validate residence and entity phone
+    // For entity: only validate residence, address and entity phone
     ['wilayaResidence','communeResidence'].forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
@@ -387,23 +627,42 @@ function validateStep1() {
       if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
       else { setError(el.closest('.field'), false); }
     });
-    // validate phone via iti
+    // validate phone
     const phoneEl = document.getElementById('phone');
-    if(phoneEl && !phoneEl.value.trim()) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), true); ok=false; }
-    else if(phoneEl) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), false); }
+    if(phoneEl && !phoneEl.value.trim()) { setError(document.getElementById('phone-field-wrapper'), true); ok=false; }
+    else if(phoneEl) { setError(document.getElementById('phone-field-wrapper'), false); }
   } else {
+    // Citizen: validate names (Arabic + Latin), father, mother, birth, residence, phone
     const birthApprox = document.getElementById('birthDateApprox')?.checked;
-    const birthFields = birthApprox ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence'] : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence'];
+    const birthFields = birthApprox
+      ? ['lastName','firstName','birthYear','birthPlace','wilayaResidence','communeResidence']
+      : ['lastName','firstName','birthDate','birthPlace','wilayaResidence','communeResidence'];
     birthFields.forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
       if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
       else { setError(el.closest('.field'), false); }
     });
-    // validate phone via iti
+    // Latin names (shown for citizen only)
+    ['lastNameLat','firstNameLat'].forEach(id => {
+      const el = document.getElementById(id);
+      const field = document.getElementById(id + '-field');
+      if(!el || !field || field.style.display === 'none') return;
+      if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
+      else { setError(el.closest('.field'), false); }
+    });
+    // Father and mother names (shown for non-entity)
+    ['fatherName','motherName'].forEach(id => {
+      const el = document.getElementById(id);
+      const field = document.getElementById(id + '-field');
+      if(!el || !field || field.style.display === 'none') return;
+      if(!el.value.trim()) { setError(el.closest('.field'), true); ok=false; }
+      else { setError(el.closest('.field'), false); }
+    });
+    // validate phone
     const phoneEl = document.getElementById('phone');
-    if(phoneEl && !phoneEl.value.trim()) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), true); ok=false; }
-    else if(phoneEl) { setError(phoneEl.closest('.field') || document.getElementById('phone-field-wrapper'), false); }
+    if(phoneEl && !phoneEl.value.trim()) { setError(document.getElementById('phone-field-wrapper'), true); ok=false; }
+    else if(phoneEl) { setError(document.getElementById('phone-field-wrapper'), false); }
   }
   return ok;
 }
@@ -640,16 +899,12 @@ async function submitDeclaration() {
   const now = new Date();
   const uType = document.getElementById('userType').value;
   const isForeignSubmit = (uType === 'resident' || uType === 'tourist');
-  // Collect phone with country code if iti is active, else use entity phone
+  // Collect phone with country code
   let collectedPhone = '';
   if(uType === 'entity') {
     collectedPhone = document.getElementById('phone-entity')?.value || '';
-  } else if(itiPhone) {
-    const dialCode = itiPhone.getSelectedCountryData().dialCode || '';
-    const rawNum = document.getElementById('phone')?.value || '';
-    collectedPhone = dialCode ? ('+' + dialCode + ' ' + rawNum) : rawNum;
   } else {
-    collectedPhone = document.getElementById('phone')?.value || '';
+    collectedPhone = getPhoneWithDialCode();
   }
   // For foreign: use foreignName field
   let collectedLastName = document.getElementById('lastName').value;
@@ -679,6 +934,7 @@ async function submitDeclaration() {
       birthPlace: document.getElementById('birthPlace').value,
       wilayaResidence: document.getElementById('wilayaResidence').value,
       communeResidence: document.getElementById('communeResidence').value,
+      addressResidence: document.getElementById('addressResidence')?.value || '',
       phone: collectedPhone,
       email: document.getElementById('email').value
     },
@@ -1383,11 +1639,8 @@ function previewDeclaration() {
   let pPhone = '';
   if(pUserType === 'entity') {
     pPhone = document.getElementById('phone-entity')?.value || '';
-  } else if(itiPhone) {
-    const dc = itiPhone.getSelectedCountryData().dialCode || '';
-    pPhone = dc ? ('+' + dc + ' ' + (document.getElementById('phone')?.value||'')) : (document.getElementById('phone')?.value||'');
   } else {
-    pPhone = document.getElementById('phone')?.value || '';
+    pPhone = getPhoneWithDialCode();
   }
   let pLastName = document.getElementById('lastName').value;
   let pFirstName = document.getElementById('firstName').value;
@@ -1417,6 +1670,7 @@ function previewDeclaration() {
       birthPlace:      document.getElementById('birthPlace').value,
       wilayaResidence: document.getElementById('wilayaResidence').value,
       communeResidence:document.getElementById('communeResidence').value,
+      addressResidence:document.getElementById('addressResidence')?.value || '',
       phone:           pPhone,
       email:           document.getElementById('email').value
     },
