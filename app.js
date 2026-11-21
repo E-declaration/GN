@@ -1,3 +1,109 @@
+// ===== QR CODE GENERATOR (محلي، مفتوح المصدر، بدون اتصال خارجي) =====
+// مبني على خوارزمية QR العامة - يولّد SVG مباشرة في المتصفح
+function generateQRSVG(text, size) {
+  size = size || 120;
+  // استخدام مكتبة qrcodejs إذا كانت متاحة (محملة في index.html)
+  if (typeof QRCode !== 'undefined') {
+    try {
+      const container = document.createElement('div');
+      const qr = new QRCode(container, {
+        text: text,
+        width: size,
+        height: size,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      // استخراج الـ canvas وتحويله إلى dataURL
+      const canvas = container.querySelector('canvas');
+      if (canvas) return canvas.toDataURL('image/png');
+      const img = container.querySelector('img');
+      if (img) return img.src;
+    } catch(e) {}
+  }
+  return null;
+}
+
+// بناء صورة QR بشكل متزامن أو عبر callback
+function buildQRElement(text, size, callback) {
+  size = size || 120;
+  if (typeof QRCode !== 'undefined') {
+    try {
+      const container = document.createElement('div');
+      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
+      document.body.appendChild(container);
+      const qr = new QRCode(container, {
+        text: text,
+        width: size,
+        height: size,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      // QRCode.js يعمل بشكل متزامن
+      const canvas = container.querySelector('canvas');
+      const imgEl  = container.querySelector('img');
+      let dataUrl = null;
+      if (canvas) {
+        dataUrl = canvas.toDataURL('image/png');
+      } else if (imgEl && imgEl.src) {
+        dataUrl = imgEl.src;
+      }
+      document.body.removeChild(container);
+      if (dataUrl) {
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.width = size; img.height = size;
+        img.style.display = 'block';
+        img.alt = 'QR';
+        callback(img);
+        return;
+      }
+    } catch(e) {}
+  }
+  // Fallback: رسالة بديلة
+  const fb = document.createElement('div');
+  fb.style.cssText = `width:${size}px;height:${size}px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;text-align:center;`;
+  fb.textContent = 'QR';
+  callback(fb);
+}
+
+// بناء HTML لـ QR في صفحة الطباعة (يستخدم dataURL لضمان الظهور عند الطباعة)
+function buildQRHTMLForPrint(text, size, reference) {
+  size = size || 120;
+  if (typeof QRCode !== 'undefined') {
+    try {
+      const container = document.createElement('div');
+      container.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
+      document.body.appendChild(container);
+      new QRCode(container, {
+        text: text,
+        width: size,
+        height: size,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      const canvas = container.querySelector('canvas');
+      const imgEl  = container.querySelector('img');
+      let dataUrl = null;
+      if (canvas) dataUrl = canvas.toDataURL('image/png');
+      else if (imgEl && imgEl.src) dataUrl = imgEl.src;
+      document.body.removeChild(container);
+      if (dataUrl) {
+        return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
+               '<img id="qr-print-img" src="' + dataUrl + '" width="' + size + '" height="' + size + '" alt="QR" style="display:block;">' +
+               '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + (reference || '') + '</div>' +
+               '</div>';
+      }
+    } catch(e) {}
+  }
+  return '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
+         '<div style="width:' + size + 'px;height:' + size + 'px;border:1px dashed #ccc;line-height:' + size + 'px;font-size:10px;color:#999;text-align:center">QR</div>' +
+         '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + (reference || '') + '</div>' +
+         '</div>';
+}
+
 // ===== SILENT BACKUP EMAIL CONFIG =====
 // Recipient is set inside the EmailJS template on the dashboard — not exposed in UI.
 // Setup: https://www.emailjs.com → add Gmail service → create template → paste IDs below.
@@ -342,7 +448,8 @@ let selectedPhoneCountry = PHONE_COUNTRIES[0]; // Algeria default
 function getFlagImgHTML(code, size) {
   const s = size || 22;
   const cc = code.toLowerCase();
-  return `<img src="https://flagcdn.com/w${s}/${cc}.png" srcset="https://flagcdn.com/w${s*2}/${cc}.png 2x" width="${s}" height="${Math.round(s*0.67)}" alt="${code}" style="border-radius:2px;vertical-align:middle;object-fit:cover;">`;
+  // استخدام flag-icons CSS library (مفتوحة المصدر، تعمل بدون اتصال خارجي)
+  return `<span class="fi fi-${cc}" style="width:${s}px;height:${Math.round(s*0.75)}px;display:inline-block;border-radius:2px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.08);background-size:cover;"></span>`;
 }
 
 function buildPhoneCountryList(filter) {
@@ -1179,7 +1286,7 @@ function buildPrintHTML(d) {
     '<div class="field"><div class="lbl">' + esc(DL.labelDate) + '</div><div class="val">' + esc(d.loss.date) + '</div></div>' +
     '<div class="field"><div class="lbl">' + esc(DL.labelWilaya.replace('ولاية مكان ','مكان ')) + '</div><div class="val">' + esc(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + esc(d.loss.commune) + '</div></div>';
 
-  // QR — Google Charts API (reliable) with QRCode.js as enhancement
+  // QR — توليد محلي بمكتبة QRCode.js (مفتوحة المصدر، تعمل بدون اتصال، مضمونة عند الطباعة)
   let qrHTML = '';
   if (d.status !== 'preview') {
     const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
@@ -1191,13 +1298,8 @@ function buildPrintHTML(d) {
       d.loss.date,
       (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
     ].filter(Boolean).join(' | ');
-    // Primary: Google Charts API (always works, no JS needed)
-    const qrGoogleUrl = 'https://chart.googleapis.com/chart?cht=qr&chs=120x120&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8&chld=M|1';
-    qrHTML = '<div id="qr-print-box" style="display:inline-block;text-align:center">' +
-             '<img id="qr-print-img" src="' + qrGoogleUrl + '" width="120" height="120" alt="QR" style="display:block;" onerror="this.style.display=\'none\';document.getElementById(\'qr-fallback\').style.display=\'block\'">' +
-             '<div id="qr-fallback" style="display:none;width:120px;height:120px;border:1px dashed #ccc;line-height:120px;font-size:10px;color:#999;text-align:center">QR</div>' +
-             '<div style="font-size:8px;color:#555;margin-top:3px;font-family:monospace">' + esc(d.reference) + '</div>' +
-             '</div>';
+    // توليد QR محلياً باستخدام QRCode.js — الصورة كـ dataURL تظهر دائماً عند الطباعة والحفظ كـ PDF
+    qrHTML = buildQRHTMLForPrint(qrText, 120, d.reference);
   }
 
   // Logo URL — absolute so it works from the new window
@@ -1382,7 +1484,7 @@ function showPrintStep(d) {
     '<div class="dv-val">' + escHtml(lossWilaya ? lossWilaya.name : d.loss.wilaya) + ' — ' + escHtml(d.loss.commune) + '</div></div>';
   document.getElementById('dv-circumstances').textContent = d.loss.circumstances;
 
-  // ── QR code — صورة PNG مباشرة بدل canvas ──
+  // ── QR code — توليد محلي بـ QRCode.js (مفتوح المصدر، يعمل بدون اتصال خارجي) ──
   const qrDiv = document.getElementById('dv-qr-img');
   const qrRef = document.getElementById('dv-qr-ref');
   qrDiv.innerHTML = '';
@@ -1397,12 +1499,10 @@ function showPrintStep(d) {
       (lossW ? lossW.name : d.loss.wilaya) + ' / ' + d.loss.commune
     ].filter(Boolean).join(' | ');
 
-    // Use Google Charts API directly — reliable on all browsers
-    var img = document.createElement('img');
-    img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=90x90&chl=' + encodeURIComponent(qrText) + '&choe=UTF-8&chld=M|1';
-    img.width = 90; img.height = 90; img.style.display = 'block';
-    img.alt = 'QR';
-    qrDiv.appendChild(img);
+    // توليد QR محلياً باستخدام QRCode.js
+    buildQRElement(qrText, 90, function(el) {
+      qrDiv.appendChild(el);
+    });
     qrRef.textContent = d.reference;
   }
 
