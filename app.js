@@ -478,6 +478,81 @@ function initPhoneITI() {
   });
 }
 
+// ===== NATIONALITY PICKER =====
+// يستخدم نفس قائمة PHONE_COUNTRIES مع إضافة الجنسية كـ "جنسية" (بدون كود الاتصال)
+// الدول المفضّلة تُعرض أولاً كما في الهاتف
+
+let selectedNatCountry = null; // لا جنسية محددة بالبداية للأجانب
+
+function buildNatCountryList(filter) {
+  const list = document.getElementById('natCountryList');
+  if (!list) return;
+  list.innerHTML = '';
+  const preferred = PHONE_COUNTRIES.filter(c => c.preferred && (!filter || c.name.includes(filter)));
+  const rest = PHONE_COUNTRIES.filter(c => !c.preferred && (!filter || c.name.includes(filter)));
+  const render = (arr) => arr.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'nat-country-item' + (selectedNatCountry && c.code === selectedNatCountry.code ? ' selected' : '');
+    item.innerHTML = `<span class="flag-img-wrap">${getFlagImgHTML(c.code, 22)}</span><span class="nat-item-name">${c.name}</span>`;
+    item.onclick = () => selectNatCountry(c);
+    list.appendChild(item);
+  });
+  render(preferred);
+  if (preferred.length && rest.length) {
+    const hr = document.createElement('hr');
+    hr.className = 'nat-country-divider';
+    list.appendChild(hr);
+  }
+  render(rest);
+}
+
+function selectNatCountry(country) {
+  selectedNatCountry = country;
+  const flagEl = document.getElementById('natFlag');
+  const nameEl = document.getElementById('natName');
+  const codeEl = document.getElementById('nationalityCode');
+  if (flagEl) flagEl.innerHTML = getFlagImgHTML(country.code, 22);
+  if (nameEl) nameEl.textContent = country.name;
+  if (codeEl) codeEl.value = country.code;
+  // إخفاء رسالة الخطأ
+  const errEl = document.getElementById('nationality-err');
+  if (errEl) errEl.style.display = 'none';
+  closeNatDropdown();
+}
+
+function toggleNatDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('natCountryDropdown');
+  if (!dd) return;
+  const isOpen = dd.classList.contains('open');
+  if (isOpen) {
+    closeNatDropdown();
+  } else {
+    dd.classList.add('open');
+    buildNatCountryList('');
+    const search = document.getElementById('natCountrySearch');
+    if (search) { search.value = ''; search.focus(); }
+  }
+}
+
+function closeNatDropdown() {
+  const dd = document.getElementById('natCountryDropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function filterNatCountries(val) {
+  buildNatCountryList(val.trim());
+}
+
+function initNatPicker() {
+  buildNatCountryList('');
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nat-picker-wrap')) {
+      closeNatDropdown();
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('year').textContent = new Date().getFullYear();
   document.getElementById('birthDate').max = new Date().toISOString().split('T')[0];
@@ -489,6 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setTheme(savedTheme ? savedTheme : 'light');
   // Initialize phone country picker
   initPhoneITI();
+  // Initialize nationality picker
+  initNatPicker();
 
   // Restore submitted data from sessionStorage (survives refresh on success page)
   try {
@@ -651,6 +728,19 @@ function validateStep1() {
       if(!eVal) ok = false;
     }
   }
+  // التحقق من الجنسية للأجانب
+  const isForeignForNat = (userType === 'resident' || userType === 'tourist');
+  if (isForeignForNat) {
+    const natCode = document.getElementById('nationalityCode')?.value || '';
+    const natErr = document.getElementById('nationality-err');
+    if (!natCode) {
+      if (natErr) natErr.style.display = 'block';
+      ok = false;
+    } else {
+      if (natErr) natErr.style.display = 'none';
+    }
+  }
+
   // Validate gender
   const genderField = document.getElementById('gender-field');
   const userTypeForGender = document.getElementById('userType').value;
@@ -839,6 +929,22 @@ function onUserTypeChange() {
   document.getElementById('passport-field').style.display = isForeign?'':'none';
   document.getElementById('entity-field').style.display = isEntity?'':'none';
 
+  // حقل الجنسية: للأجانب فقط
+  const natField = document.getElementById('nationality-field');
+  if (natField) {
+    natField.style.display = isForeign ? '' : 'none';
+    if (!isForeign) {
+      // إعادة تعيين الجنسية عند التبديل
+      selectedNatCountry = null;
+      const flagEl = document.getElementById('natFlag');
+      const nameEl = document.getElementById('natName');
+      const codeEl = document.getElementById('nationalityCode');
+      if (flagEl) flagEl.innerHTML = '';
+      if (nameEl) nameEl.textContent = 'اختر الجنسية';
+      if (codeEl) codeEl.value = '';
+    }
+  }
+
   // إخفاء حقول الاسم العربي واللاتيني للأجانب والشخص المعنوي
   const hideArabicNames = isEntity || isForeign;
   document.getElementById('lastName-field').style.display = hideArabicNames?'none':'';
@@ -993,6 +1099,8 @@ async function submitDeclaration() {
       nin: document.getElementById('nin').value,
       passportNum: document.getElementById('passportNum').value,
       entityName: document.getElementById('entityName').value,
+      nationality: isForeignSubmit ? (selectedNatCountry ? selectedNatCountry.name : '') : '',
+      nationalityCode: isForeignSubmit ? (selectedNatCountry ? selectedNatCountry.code : '') : '',
       lastName: collectedLastName,
       firstName: collectedFirstName,
       lastNameLat: document.getElementById('lastNameLat').value,
@@ -1195,12 +1303,14 @@ function buildPrintHTML(d) {
   } else if (uType === 'resident') {
     reporterRows.push(['رقم بطاقة الإقامة', r.passportNum]);
     reporterRows.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) reporterRows.push(['الجنسية', r.nationality]);
     reporterRows.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
     if (r.fatherName) reporterRows.push(['اسم ولقب الأب', r.fatherName]);
     if (r.motherName) reporterRows.push(['اسم ولقب الأم', r.motherName]);
   } else if (uType === 'tourist') {
     reporterRows.push(['رقم جواز السفر', r.passportNum]);
     reporterRows.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) reporterRows.push(['الجنسية', r.nationality]);
     reporterRows.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
     if (r.fatherName) reporterRows.push(['اسم ولقب الأب', r.fatherName]);
     if (r.motherName) reporterRows.push(['اسم ولقب الأم', r.motherName]);
@@ -1242,14 +1352,28 @@ function buildPrintHTML(d) {
   // QR — توليد محلي بمكتبة QRious (canvas، تعمل بدون اتصال، مضمونة عند الطباعة)
   let qrHTML = '';
   if (d.status !== 'preview') {
+    // ملاحظة: نستخدم ASCII فقط في QR لتجنب مشكلة encoding مع QRious
+    // نوع التصريح: loss=LOSS | theft=THEFT | damage=DAMAGE
+    const typeMap = { 'loss':'LOSS', 'theft':'THEFT', 'damage':'DAMAGE' };
+    const qrType = typeMap[d.declarationType] || (d.declarationType||'').toUpperCase();
     const lossW = WILAYAS.find(w => w.code === d.loss.wilaya);
+    // الولاية والبلدية: إزالة الحروف غير-ASCII
+    const lieuText = ((lossW ? lossW.name : d.loss.wilaya) + '/' + d.loss.commune)
+      .replace(/[؀-ۿ\s]+/g, function(m){ return m.trim() ? '' : ''; })
+      .trim() || (d.loss.wilaya + '/' + d.loss.commune);
+    // استخدام كود الولاية (숫자) بدلاً من الاسم العربي
+    const wilayaCode = d.loss.wilaya || '';
+    const commune = (d.loss.commune || '').replace(/[^\x20-\x7E]/g, '');
+    const nomRaw = ((r.lastName + ' ' + r.firstName).trim() || r.entityName || '');
+    const nom = nomRaw.replace(/[^\x20-\x7E]/g, '') || nomRaw; // Latin إن وجد وإلا نتركه
     const qrText = [
       'REF:' + d.reference,
-      'TYPE:' + (d.declarationTypeLabel || d.declarationType),
-      'NOM:' + ((r.lastName + ' ' + r.firstName).trim() || r.entityName || ''),
+      'TYPE:' + qrType,
+      'NOM:' + (nom || nomRaw),
       'NIN:' + (r.nin || r.passportNum || ''),
+      r.nationalityCode ? 'NAT:' + r.nationalityCode : '',
       'DATE:' + d.loss.date,
-      'LIEU:' + ((lossW ? lossW.name : d.loss.wilaya) + '/' + d.loss.commune)
+      'WILAYA:' + wilayaCode + (commune ? '/' + commune : '')
     ].filter(Boolean).join('\n');
     // توليد QR باستخدام QRious — الصورة كـ dataURL تظهر دائماً عند الطباعة والحفظ كـ PDF
     qrHTML = buildQRHTMLForPrint(qrText, 130, d.reference);
@@ -1373,12 +1497,14 @@ function showPrintStep(d) {
   } else if (spType === 'resident') {
     reporterFields.push(['رقم بطاقة الإقامة', r.passportNum]);
     reporterFields.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) reporterFields.push(['الجنسية', r.nationality]);
     reporterFields.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
     if (r.fatherName) reporterFields.push(['اسم ولقب الأب', r.fatherName]);
     if (r.motherName) reporterFields.push(['اسم ولقب الأم', r.motherName]);
   } else if (spType === 'tourist') {
     reporterFields.push(['رقم جواز السفر', r.passportNum]);
     reporterFields.push(['الاسم الكامل', r.lastName]);
+    if (r.nationality) reporterFields.push(['الجنسية', r.nationality]);
     reporterFields.push(['الاسم بالحروف اللاتينية', (r.lastNameLat + ' ' + r.firstNameLat).trim()]);
     if (r.fatherName) reporterFields.push(['اسم ولقب الأب', r.fatherName]);
     if (r.motherName) reporterFields.push(['اسم ولقب الأم', r.motherName]);
@@ -1443,18 +1569,23 @@ function showPrintStep(d) {
   qrDiv.innerHTML = '';
   qrRef.textContent = '';
   if (d.status !== 'preview') {
-    const lossW   = WILAYAS.find(w => w.code === d.loss.wilaya);
-    const qrText  = [
+    const typeMap2 = { 'loss':'LOSS', 'theft':'THEFT', 'damage':'DAMAGE' };
+    const qrType2 = typeMap2[d.declarationType] || (d.declarationType||'').toUpperCase();
+    const commune2 = (d.loss.commune || '').replace(/[^\x20-\x7E]/g, '');
+    const nomRaw2 = ((r.lastName + ' ' + r.firstName).trim() || r.entityName || '');
+    const nom2 = nomRaw2.replace(/[^\x20-\x7E]/g, '') || nomRaw2;
+    const qrText2 = [
       'REF:' + d.reference,
-      'TYPE:' + (d.declarationTypeLabel || d.declarationType),
-      'NOM:' + ((r.lastName + ' ' + r.firstName).trim() || r.entityName || ''),
+      'TYPE:' + qrType2,
+      'NOM:' + (nom2 || nomRaw2),
       'NIN:' + (r.nin || r.passportNum || ''),
+      r.nationalityCode ? 'NAT:' + r.nationalityCode : '',
       'DATE:' + d.loss.date,
-      'LIEU:' + ((lossW ? lossW.name : d.loss.wilaya) + '/' + d.loss.commune)
+      'WILAYA:' + (d.loss.wilaya||'') + (commune2 ? '/' + commune2 : '')
     ].filter(Boolean).join('\n');
 
     // توليد QR باستخدام QRious
-    buildQRElement(qrText, 90, function(el) {
+    buildQRElement(qrText2, 90, function(el) {
       qrDiv.appendChild(el);
     });
     qrRef.textContent = d.reference;
@@ -1754,6 +1885,8 @@ function previewDeclaration() {
       entityName:      document.getElementById('entityName').value,
       lastName:        pLastName,
       firstName:       pFirstName,
+      nationality:     pIsForeign ? (selectedNatCountry ? selectedNatCountry.name : '') : '',
+      nationalityCode: pIsForeign ? (selectedNatCountry ? selectedNatCountry.code : '') : '',
       lastNameLat:     document.getElementById('lastNameLat').value,
       firstNameLat:    document.getElementById('firstNameLat').value,
       fatherName:      document.getElementById('fatherName').value,
