@@ -20,6 +20,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="E-Dec GN">
   <link rel="stylesheet" href="style.css">
+  <!-- flag-icons: مكتبة أعلام الدول مفتوحة المصدر (SVG، تعمل بدون صور خارجية) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
   <!-- Custom phone country picker styles -->
   <style>
     .phone-picker-wrap { position: relative; display: flex; align-items: stretch; width: 100%; }
@@ -58,7 +60,9 @@
     .phone-country-item .flag-emoji { font-size: 20px; line-height: 1; }
     .phone-country-item .flag-img-wrap { display:inline-flex; align-items:center; width:26px; flex-shrink:0; }
     .phone-country-item .flag-img-wrap img { border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
+    .phone-country-item .flag-img-wrap .fi { width:22px !important; height:16px !important; border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.08); background-size:cover !important; }
     #phoneFlag img { border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.1); vertical-align:middle; }
+    #phoneFlag .fi { width:22px !important; height:16px !important; border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.1); vertical-align:middle; display:inline-block; background-size:cover !important; }
     .phone-country-item .country-name { flex: 1; color: #222; }
     .phone-country-item .country-dial { color: #1a7c3e; font-weight: 600; font-size: 12px; }
     .phone-country-divider { border: none; border-top: 1px solid #eee; margin: 2px 0; }
@@ -326,7 +330,7 @@
           <label for="phone">رقم الهاتف <span class="req">*</span></label>
           <div class="phone-picker-wrap">
             <button type="button" class="phone-country-btn" id="phoneCountryBtn" onclick="togglePhoneDropdown(event)" aria-haspopup="listbox">
-              <span id="phoneFlag"><img src="https://flagcdn.com/w22/dz.png" width="22" height="15" alt="DZ" style="border-radius:3px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.1);"></span>
+              <span id="phoneFlag"><span class="fi fi-dz" style="width:22px;height:16px;display:inline-block;border-radius:3px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.1);background-size:cover;"></span></span>
               <span class="dial-code" id="phoneDialCode">+213</span>
               <span class="caret">▼</span>
             </button>
