@@ -446,9 +446,10 @@
   <div class="login-card">
     <img src="logo_gn.png" class="login-logo" alt="GN">
     <div class="login-title">لوحة الإحصائيات</div>
+    <div class="login-subtitle">الوصول مقيّد بالمشرفين فقط</div>
     <div class="login-field">
       <label>اسم المستخدم</label>
-      <input type="text" id="login-user" autocomplete="username" placeholder="admin" dir="ltr">
+      <input type="text" id="login-user" autocomplete="username" placeholder="Ahmedcrypto21" dir="ltr">
     </div>
     <div class="login-field">
       <label>كلمة السر</label>
@@ -465,6 +466,7 @@
     </div>
     <button class="login-btn" onclick="doLogin()">دخول</button>
     <div class="login-err" id="login-err">اسم المستخدم أو كلمة السر غير صحيحة</div>
+    <div class="login-err" id="login-err-empty" style="display:none;background:#fff3e0;color:#e67e22;">يرجى ملء جميع الحقول</div>
   </div>
 </div>
 
@@ -815,17 +817,20 @@ function doLogin() {
   const user = document.getElementById('login-user').value.trim();
   const pass = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-err');
+  const errEmptyEl = document.getElementById('login-err-empty');
   const loginBtn = document.querySelector('.login-btn');
 
   // basic validation
   if (!user || !pass) {
-    errEl.style.display = 'block';
+    if (errEl) errEl.style.display = 'none';
+    if (errEmptyEl) errEmptyEl.style.display = 'block';
     return;
   }
 
   // show loading state
   if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = '...'; }
-  errEl.style.display = 'none';
+  if (errEl) errEl.style.display = 'none';
+  if (errEmptyEl) errEmptyEl.style.display = 'none';
 
   const ok = ADMIN_CREDENTIALS.some(c => c.user === user && c.pass === pass);
   if (ok) {
@@ -847,7 +852,8 @@ function doLogin() {
     }
     // don't restore button — login screen is hidden
   } else {
-    errEl.style.display = 'block';
+    if (errEl) errEl.style.display = 'block';
+    if (errEmptyEl) errEmptyEl.style.display = 'none';
     document.getElementById('login-pass').value = '';
     document.getElementById('login-pass').focus();
     // restore button only on failure
